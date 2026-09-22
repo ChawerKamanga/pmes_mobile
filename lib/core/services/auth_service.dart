@@ -61,4 +61,31 @@ class AuthService {
       statusCode: response.statusCode,
     );
   }
+
+  Future<void> logout({required String token}) async {
+    final Uri uri = Uri.parse(ApiConstants.logout);
+
+    late final http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+    } on SocketException {
+      throw const ApiException('Unable to reach the server. Check your connection.');
+    }
+
+    if (response.statusCode == 200) return;
+
+    final Map<String, dynamic> body =
+        response.body.isEmpty ? {} : jsonDecode(response.body) as Map<String, dynamic>;
+    throw ApiException(
+      body['message'] as String? ?? 'Logout failed. Please try again.',
+      statusCode: response.statusCode,
+    );
+  }
 }
