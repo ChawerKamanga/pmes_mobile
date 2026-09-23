@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
 import '../core/services/api_exception.dart';
 import '../core/services/auth_service.dart';
-import '../core/services/session_storage.dart';
+import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
-import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,17 +45,16 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      final session = context.read<SessionProvider>();
       final result = await _authService.login(
         email: email,
         password: password,
         deviceName: 'mobile',
       );
-      await SessionStorage.saveToken(result.token);
+      await session.signIn(result.token);
 
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      context.go('/home');
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
@@ -121,7 +122,9 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -209,7 +212,9 @@ class _LoginPageState extends State<LoginPage> {
                                 'Sign in with your officer credentials to access assigned field projects',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.neutral.withValues(alpha: 0.9),
+                                  color: AppColors.neutral.withValues(
+                                    alpha: 0.9,
+                                  ),
                                   height: 1.3,
                                 ),
                               ),
@@ -254,7 +259,8 @@ class _LoginPageState extends State<LoginPage> {
 
                               // Password Label & Forgot Password Link
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
                                     'PASSWORD',
@@ -337,7 +343,9 @@ class _LoginPageState extends State<LoginPage> {
                                 width: double.infinity,
                                 height: 52,
                                 child: ElevatedButton(
-                                  onPressed: _isSubmitting ? null : _handleSignIn,
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : _handleSignIn,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.secondary,
                                     shape: RoundedRectangleBorder(
@@ -351,13 +359,15 @@ class _LoginPageState extends State<LoginPage> {
                                           height: 22,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.4,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: const [
                                             Text(
                                               'Sign In',
@@ -384,7 +394,8 @@ class _LoginPageState extends State<LoginPage> {
                                 child: Column(
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
                                         Icon(
                                           Icons.circle,
