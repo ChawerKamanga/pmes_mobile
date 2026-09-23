@@ -20,7 +20,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: AppColors.card.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.bar_chart_rounded, color: AppColors.secondary, size: 24),
@@ -32,11 +32,11 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             children: [
               Text(
                 'PMES FIELD OPS',
-                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 12, color: AppColors.card.withValues(alpha: 0.6), fontWeight: FontWeight.w500),
               ),
               const Text(
                 'Projects',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.card),
               ),
             ],
           ),
@@ -44,7 +44,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_outlined, color: Colors.white),
+          icon: const Icon(Icons.notifications_none_outlined, color: AppColors.card),
           onPressed: () {},
         ),
         Padding(
@@ -52,7 +52,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: CircleAvatar(
             radius: 18,
             backgroundColor: AppColors.tertiary.withValues(alpha: 0.2),
-            child: const Icon(Icons.person_outline, color: Colors.white),
+            child: const Icon(Icons.person_outline, color: AppColors.card),
           ),
         ),
       ],

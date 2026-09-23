@@ -10,7 +10,7 @@ class FieldCommandCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E2241),
+        color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -21,7 +21,7 @@ class FieldCommandCard extends StatelessWidget {
             children: [
               Text(
                 'FIELD COMMAND',
-                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.bold, letterSpacing: 1),
+                style: TextStyle(fontSize: 12, color: AppColors.card.withValues(alpha: 0.5), fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -42,25 +42,25 @@ class FieldCommandCard extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'Welcome back, Field\nOfficer',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.card, height: 1.2),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.location_on_outlined, color: Colors.white.withValues(alpha: 0.6), size: 18),
+              Icon(Icons.location_on_outlined, color: AppColors.card.withValues(alpha: 0.6), size: 18),
               const SizedBox(width: 6),
               Text(
                 'Lilongwe Rural District • Southern Zone',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+                style: TextStyle(color: AppColors.card.withValues(alpha: 0.6), fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 24),
           Row(
             children: [
-              _StatusIndicator(color: Colors.green, text: 'Offline buffer active'),
+              _StatusIndicator(color: AppColors.tertiary, text: 'Offline buffer active'),
               const Spacer(),
-              _StatusIndicator(color: Colors.cyanAccent, text: 'GPS ±4m precision'),
+              _StatusIndicator(color: AppColors.secondaryLight, text: 'GPS ±4m precision'),
             ],
           ),
         ],
@@ -80,7 +80,7 @@ class _StatusIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppColors.card.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -88,7 +88,7 @@ class _StatusIndicator extends StatelessWidget {
         children: [
           Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
+          Text(text, style: const TextStyle(color: AppColors.card, fontSize: 12)),
         ],
       ),
     );

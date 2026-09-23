@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+
 class HomeStatCard extends StatelessWidget {
   const HomeStatCard({
     required this.icon,
@@ -23,7 +25,7 @@ class HomeStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -45,11 +47,11 @@ class HomeStatCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black)),
+          Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryDark)),
           const SizedBox(height: 2),
-          Text(subLabel, style: TextStyle(fontSize: 12, color: Colors.black.withValues(alpha: 0.6))),
+          Text(subLabel, style: TextStyle(fontSize: 12, color: AppColors.neutral.withValues(alpha: 0.8))),
         ],
       ),
     );

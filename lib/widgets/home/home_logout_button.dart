@@ -14,7 +14,7 @@ class HomeLogoutButton extends StatelessWidget {
       onPressed: isLoggingOut ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.card,
         minimumSize: const Size(double.infinity, 50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -22,7 +22,7 @@ class HomeLogoutButton extends StatelessWidget {
           ? const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.card)),
             )
           : const Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
