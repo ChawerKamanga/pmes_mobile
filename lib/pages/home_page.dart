@@ -7,6 +7,7 @@ import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
 import '../widgets/home/assigned_project_card.dart';
 import '../widgets/home/assigned_projects_header.dart';
+import '../widgets/home/custom_bottom_nav_bar.dart';
 import '../widgets/home/field_command_card.dart';
 import '../widgets/home/home_app_bar.dart';
 import '../widgets/home/home_logout_button.dart';
@@ -43,6 +44,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const HomeAppBar(),
+      bottomNavigationBar: const CustomBottomNavBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Column(
