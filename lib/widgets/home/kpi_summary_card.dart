@@ -3,7 +3,18 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
 class KpiSummaryCard extends StatelessWidget {
-  const KpiSummaryCard({super.key});
+  const KpiSummaryCard({
+    required this.verified,
+    required this.total,
+    required this.completionPercentage,
+    required this.nextReviewLabel,
+    super.key,
+  });
+
+  final String verified;
+  final String total;
+  final num completionPercentage;
+  final String nextReviewLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +46,9 @@ class KpiSummaryCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      '8 / 12',
-                      style: TextStyle(
+                    Text(
+                      '$verified / $total',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.primaryDark,
@@ -53,9 +64,9 @@ class KpiSummaryCard extends StatelessWidget {
                         color: AppColors.secondary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        '67% Target',
-                        style: TextStyle(
+                      child: Text(
+                        '${completionPercentage.round()}% Target',
+                        style: const TextStyle(
                           color: AppColors.secondaryDark,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -65,9 +76,9 @@ class KpiSummaryCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'KPIs Verified • Next routine review in 3 days',
-                  style: TextStyle(fontSize: 12, color: AppColors.neutral),
+                Text(
+                  'KPIs Verified • $nextReviewLabel',
+                  style: const TextStyle(fontSize: 12, color: AppColors.neutral),
                 ),
               ],
             ),

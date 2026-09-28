@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
 class AssignedProjectsHeader extends StatelessWidget {
-  const AssignedProjectsHeader({super.key});
+  const AssignedProjectsHeader({required this.activeCount, super.key});
+
+  final int activeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +29,9 @@ class AssignedProjectsHeader extends StatelessWidget {
                 color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Text(
-                '2 Active',
-                style: TextStyle(
+              child: Text(
+                '$activeCount Active',
+                style: const TextStyle(
                   color: AppColors.card,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,

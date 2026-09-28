@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
 
+import '../../core/models/dashboard_overview.dart';
 import '../../core/theme/app_colors.dart';
 
 class AssignedProjectCard extends StatelessWidget {
-  const AssignedProjectCard({super.key});
+  const AssignedProjectCard({required this.project, super.key});
+
+  final AssignedProject project;
+
+  static String _stripHtml(String value, {int maxLength = 220}) {
+    final plainText = value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    if (plainText.length <= maxLength) return plainText;
+    return '${plainText.substring(0, maxLength).trim()}…';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final section = project.section != null && project.section!.isNotEmpty
+        ? _stripHtml(project.section!)
+        : null;
+    final activity = project.activity != null && project.activity!.isNotEmpty
+        ? _stripHtml(project.activity!)
+        : null;
+    final subtitle = [
+      if (section != null && section.isNotEmpty) section,
+      if (activity != null && activity.isNotEmpty) activity,
+    ].join(' • ');
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -19,10 +38,10 @@ class AssignedProjectCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'CONTRACT REF: RA/MW/2024/09',
-                  style: TextStyle(
+                  'CONTRACT REF: ${project.contractRef}',
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: AppColors.neutral,
@@ -36,13 +55,13 @@ class AssignedProjectCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _StatusTag(
-                    label: 'Published',
+                    label: project.status.publication,
                     color: AppColors.secondaryLight.withValues(alpha: 0.18),
                     textColor: AppColors.secondaryDark,
                   ),
                   const SizedBox(width: 6),
                   _StatusTag(
-                    label: 'In Progress',
+                    label: project.status.progress,
                     color: AppColors.primaryLight.withValues(alpha: 0.14),
                     textColor: AppColors.primaryLight,
                   ),
@@ -51,29 +70,33 @@ class AssignedProjectCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Rehabilitation & Expansion of Lilongwe–Mchinji Road Corridor',
-            style: TextStyle(
+          Text(
+            project.title,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.primaryDark,
               height: 1.25,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Section KM 14+200 • Heavy civil pavement resurfacing',
-            style: TextStyle(fontSize: 12, color: AppColors.neutral),
-          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppColors.neutral),
+            ),
+          ],
           const SizedBox(height: 16),
-          _buildMilestoneProgress(),
+          _buildMilestoneProgress(project.milestoneCompletion),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _buildSmallSpecCard(
                   icon: Icons.payments_outlined,
-                  title: 'MWK 3.98B',
+                  title: project.stats.approvedBudget,
                   subtitle: 'Approved',
                 ),
               ),
@@ -81,7 +104,7 @@ class AssignedProjectCard extends StatelessWidget {
               Expanded(
                 child: _buildSmallSpecCard(
                   icon: Icons.verified_outlined,
-                  title: '8 / 12',
+                  title: project.stats.kpisMet,
                   subtitle: 'KPIs Met',
                 ),
               ),
@@ -89,14 +112,14 @@ class AssignedProjectCard extends StatelessWidget {
               Expanded(
                 child: _buildSmallSpecCard(
                   icon: Icons.access_time_rounded,
-                  title: '08:30 AM',
+                  title: project.stats.lastSynced,
                   subtitle: 'Last Synced',
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          _buildMapBanner(),
+          _buildMapBanner(project.location),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -148,7 +171,8 @@ class AssignedProjectCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMilestoneProgress() {
+  Widget _buildMilestoneProgress(num milestoneCompletion) {
+    final progress = (milestoneCompletion / 100).clamp(0, 1).toDouble();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -159,8 +183,8 @@ class AssignedProjectCard extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 'Milestone Completion',
                 style: TextStyle(
                   fontSize: 12,
@@ -169,8 +193,8 @@ class AssignedProjectCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '64%',
-                style: TextStyle(
+                '${milestoneCompletion.round()}%',
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.secondaryDark,
@@ -181,11 +205,11 @@ class AssignedProjectCard extends StatelessWidget {
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: const LinearProgressIndicator(
-              value: 0.64,
+            child: LinearProgressIndicator(
+              value: progress,
               minHeight: 6,
               backgroundColor: AppColors.neutralLight,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
             ),
           ),
         ],
@@ -226,7 +250,13 @@ class AssignedProjectCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMapBanner() {
+  Widget _buildMapBanner(ProjectLocation location) {
+    final label = [
+      if (location.latitude.isNotEmpty && location.longitude.isNotEmpty)
+        '${location.latitude}, ${location.longitude}',
+      location.name,
+    ].where((s) => s.isNotEmpty).join(' • ');
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -254,10 +284,10 @@ class AssignedProjectCard extends StatelessWidget {
                   size: 16,
                 ),
                 const SizedBox(width: 6),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '-13.9626, 33.7741 • Mchinji Road Km...',
-                    style: TextStyle(
+                    label,
+                    style: const TextStyle(
                       color: AppColors.card,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -265,24 +295,25 @@ class AssignedProjectCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondaryLight.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    '±3m Fixed',
-                    style: TextStyle(
-                      color: AppColors.secondaryLight,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                if (location.accuracy != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondaryLight.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '±${location.accuracy}m Fixed',
+                      style: const TextStyle(
+                        color: AppColors.secondaryLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
