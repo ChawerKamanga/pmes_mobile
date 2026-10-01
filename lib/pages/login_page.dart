@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../core/services/api_exception.dart';
 import '../core/services/auth_service.dart';
@@ -113,45 +114,12 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const SizedBox(height: 16),
-                              // App Icon
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF23274B),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.bar_chart_rounded,
-                                    color: AppColors.secondaryLight,
-                                    size: 36,
-                                  ),
-                                ),
+                              Image.asset(
+                                'images/pmes_logo_removebg_preview_cuua1g.png',
+                                height: 50,
+                                fit: BoxFit.contain,
                               ),
                               const SizedBox(height: 12),
-                              // Title
-                              const Text(
-                                'PMES',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
                               const SizedBox(height: 4),
                               // Subtitle
                               Text(
@@ -357,17 +325,7 @@ class _LoginPageState extends State<LoginPage> {
                                     elevation: 0,
                                   ),
                                   child: _isSubmitting
-                                      ? const SizedBox(
-                                          width: 22,
-                                          height: 22,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.4,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
-                                          ),
-                                        )
+                                      ? const _ButtonShimmerPlaceholder()
                                       : Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -430,6 +388,40 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ButtonShimmerPlaceholder extends StatelessWidget {
+  const _ButtonShimmerPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.white.withValues(alpha: 0.35),
+      highlightColor: Colors.white.withValues(alpha: 0.8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            height: 16,
+            width: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            height: 16,
+            width: 16,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
       ),
     );
   }

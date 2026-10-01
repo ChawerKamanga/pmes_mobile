@@ -261,62 +261,66 @@ class AssignedProjectCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         height: 100,
-        decoration: const BoxDecoration(
-          color: AppColors.inputBackground,
-          image: DecorationImage(
-            image: NetworkImage(
-              'https://tile.openstreetmap.org/14/9691/8470.png',
+        decoration: const BoxDecoration(color: AppColors.inputBackground),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Center(
+              child: Icon(
+                Icons.map_outlined,
+                size: 32,
+                color: AppColors.neutral,
+              ),
             ),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: AppColors.primaryLight,
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  color: AppColors.card,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: AppColors.primaryLight,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
                       color: AppColors.card,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      size: 16,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (location.accuracy != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryLight.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '±${location.accuracy}m Fixed',
-                      style: const TextStyle(
-                        color: AppColors.secondaryLight,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: AppColors.card,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-              ],
+                    if (location.accuracy != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryLight.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '±${location.accuracy}m Fixed',
+                          style: const TextStyle(
+                            color: AppColors.secondaryLight,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_colors.dart';
 
@@ -19,12 +20,28 @@ class HomeLogoutButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: isLoggingOut
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.card)),
-            )
+          ? const _LogoutButtonShimmerPlaceholder()
           : const Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+class _LogoutButtonShimmerPlaceholder extends StatelessWidget {
+  const _LogoutButtonShimmerPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.white.withValues(alpha: 0.35),
+      highlightColor: Colors.white.withValues(alpha: 0.8),
+      child: Container(
+        height: 16,
+        width: 68,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
     );
   }
 }

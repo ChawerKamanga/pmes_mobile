@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../core/models/dashboard_overview.dart';
 import '../core/services/api_exception.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/dashboard_service.dart';
-import '../core/services/location_provider.dart';
 import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
 import '../widgets/home/assigned_project_card.dart';
@@ -30,23 +30,15 @@ class _HomePageState extends State<HomePage> {
   static const _dashboardService = DashboardService();
   bool _isLoggingOut = false;
 
-  Future<DashboardOverviewData>? _overviewFuture;
+  DashboardOverviewData? _overview;
+  bool _isInitialLoading = true;
+  String? _initialErrorMessage;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _overviewFuture ??= _loadOverview();
-
-    final locationProvider = context.read<LocationProvider>();
-    if (locationProvider.locationLabel == null &&
-        !locationProvider.isLoading &&
-        locationProvider.errorMessage == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        context.read<LocationProvider>().refreshLocation();
-      });
+    if (_overview == null && _isInitialLoading) {
+      _loadInitialOverview();
     }
   }
 
@@ -59,13 +51,47 @@ class _HomePageState extends State<HomePage> {
     return response.data;
   }
 
+  Future<void> _loadInitialOverview() async {
+    setState(() {
+      _isInitialLoading = true;
+      _initialErrorMessage = null;
+    });
+    try {
+      final overview = await _loadOverview();
+      if (!mounted) return;
+      setState(() {
+        _overview = overview;
+        _isInitialLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is ApiException
+          ? error.message
+          : 'Something went wrong while loading the dashboard.';
+      setState(() {
+        _initialErrorMessage = message;
+        _isInitialLoading = false;
+      });
+    }
+  }
+
   Future<void> _refresh() async {
-    final overviewFuture = _loadOverview();
-    setState(() => _overviewFuture = overviewFuture);
-    await Future.wait([
-      overviewFuture,
-      context.read<LocationProvider>().refreshLocation(),
-    ]);
+    try {
+      final overview = await _loadOverview();
+      if (!mounted) return;
+      setState(() {
+        _overview = overview;
+        _initialErrorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is ApiException
+          ? error.message
+          : 'Something went wrong while refreshing the dashboard.';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -88,24 +114,27 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: AppColors.background,
       appBar: const HomeAppBar(),
       bottomNavigationBar: const CustomBottomNavBar(),
-      body: FutureBuilder<DashboardOverviewData>(
-        future: _overviewFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _buildBody(),
+    );
+  }
 
-          if (snapshot.hasError) {
-            final message = snapshot.error is ApiException
-                ? (snapshot.error as ApiException).message
-                : 'Something went wrong while loading the dashboard.';
-            return _ErrorState(message: message, onRetry: _refresh);
-          }
+  Widget _buildBody() {
+    if (_isInitialLoading) {
+      return const _HomePageLoadingShimmer();
+    }
 
-          final overview = snapshot.data!;
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: SingleChildScrollView(
+    if (_overview == null) {
+      return _ErrorState(
+        message: _initialErrorMessage ??
+            'Something went wrong while loading the dashboard.',
+        onRetry: _loadInitialOverview,
+      );
+    }
+
+    final overview = _overview!;
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
@@ -209,8 +238,184 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-          );
-        },
+    );
+  }
+}
+
+class _HomePageLoadingShimmer extends StatelessWidget {
+  const _HomePageLoadingShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      child: Shimmer.fromColors(
+        baseColor: AppColors.neutralLight.withValues(alpha: 0.7),
+        highlightColor: AppColors.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _ShimmerBox(height: 206, borderRadius: 24),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _ShimmerStatCard()),
+                SizedBox(width: 12),
+                Expanded(child: _ShimmerStatCard()),
+              ],
+            ),
+            SizedBox(height: 12),
+            _ShimmerBox(height: 90, borderRadius: 20),
+            SizedBox(height: 28),
+            _ShimmerProjectsHeader(),
+            SizedBox(height: 16),
+            _ShimmerProjectCard(),
+            SizedBox(height: 16),
+            _ShimmerProjectCard(),
+            SizedBox(height: 16),
+            _ShimmerBox(height: 56, borderRadius: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerStatCard extends StatelessWidget {
+  const _ShimmerStatCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _ShimmerBox(height: 40, width: 40, borderRadius: 10),
+              _ShimmerBox(height: 20, width: 70, borderRadius: 10),
+            ],
+          ),
+          SizedBox(height: 24),
+          _ShimmerBox(height: 24, width: 90, borderRadius: 8),
+          SizedBox(height: 8),
+          _ShimmerBox(height: 14, width: 110, borderRadius: 8),
+          SizedBox(height: 6),
+          _ShimmerBox(height: 12, width: 80, borderRadius: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShimmerProjectsHeader extends StatelessWidget {
+  const _ShimmerProjectsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            _ShimmerBox(height: 20, width: 180, borderRadius: 8),
+            SizedBox(width: 8),
+            _ShimmerBox(height: 24, width: 70, borderRadius: 16),
+          ],
+        ),
+        _ShimmerBox(height: 34, width: 34, borderRadius: 10),
+      ],
+    );
+  }
+}
+
+class _ShimmerProjectCard extends StatelessWidget {
+  const _ShimmerProjectCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _ShimmerBox(height: 12, width: 130, borderRadius: 6),
+              Row(
+                children: [
+                  _ShimmerBox(height: 22, width: 54, borderRadius: 10),
+                  SizedBox(width: 6),
+                  _ShimmerBox(height: 22, width: 54, borderRadius: 10),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          _ShimmerBox(height: 18, width: double.infinity, borderRadius: 8),
+          SizedBox(height: 8),
+          _ShimmerBox(height: 12, width: double.infinity, borderRadius: 8),
+          SizedBox(height: 6),
+          _ShimmerBox(height: 12, width: 220, borderRadius: 8),
+          SizedBox(height: 16),
+          _ShimmerBox(height: 58, borderRadius: 12),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _ShimmerBox(height: 72, borderRadius: 12)),
+              SizedBox(width: 8),
+              Expanded(child: _ShimmerBox(height: 72, borderRadius: 12)),
+              SizedBox(width: 8),
+              Expanded(child: _ShimmerBox(height: 72, borderRadius: 12)),
+            ],
+          ),
+          SizedBox(height: 14),
+          _ShimmerBox(height: 74, borderRadius: 16),
+          SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _ShimmerBox(height: 44, borderRadius: 12)),
+              SizedBox(width: 10),
+              Expanded(child: _ShimmerBox(height: 44, borderRadius: 12)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShimmerBox extends StatelessWidget {
+  const _ShimmerBox({
+    required this.height,
+    this.width,
+    required this.borderRadius,
+  });
+
+  final double height;
+  final double? width;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }

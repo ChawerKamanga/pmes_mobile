@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/connectivity_provider.dart';
 import 'core/services/location_provider.dart';
 import 'core/services/session_provider.dart';
 import 'core/router/app_router.dart';
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
           create: (_) => SessionProvider()..restoreSession(),
         ),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
       ],
       child: const AppRouter(),
     );

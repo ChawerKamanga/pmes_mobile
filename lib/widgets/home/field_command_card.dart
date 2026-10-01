@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/services/connectivity_provider.dart';
 import '../../core/services/location_provider.dart';
 import '../../core/services/session_provider.dart';
 import '../../core/theme/app_colors.dart';
@@ -28,6 +29,14 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
   Widget build(BuildContext context) {
     final userName = context.watch<SessionProvider>().userName;
     final locationProvider = context.watch<LocationProvider>();
+    final connectivityProvider = context.watch<ConnectivityProvider>();
+
+    final statusText = connectivityProvider.isChecking
+      ? 'Checking...'
+      : (connectivityProvider.isOnline ? 'Online' : 'Offline');
+    final statusColor = connectivityProvider.isChecking
+      ? AppColors.neutral
+      : (connectivityProvider.isOnline ? AppColors.tertiary : AppColors.error);
 
     final locationText =
         locationProvider.locationLabel ??
@@ -129,17 +138,23 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
           Row(
             children: [
               _StatusIndicator(
-                color: AppColors.tertiary,
-                text: 'Offline buffer active',
+                color: statusColor,
+                text: statusText,
               ),
-              const Spacer(),
-              _StatusIndicator(
-                color: AppColors.secondaryLight,
-                text: 'GPS ±4m precision',
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Refresh internet status',
+                onPressed: connectivityProvider.isChecking
+                    ? null
+                    : () => context.read<ConnectivityProvider>().refreshStatus(),
+                icon: Icon(
+                  Icons.wifi_tethering,
+                  size: 18,
+                  color: AppColors.card.withValues(alpha: 0.75),
+                ),
               ),
             ],
           ),
