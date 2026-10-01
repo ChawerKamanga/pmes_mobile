@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/location_provider.dart';
 import 'core/services/session_provider.dart';
 import 'core/router/app_router.dart';
 
@@ -13,8 +14,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => SessionProvider()..restoreSession(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => SessionProvider()..restoreSession(),
+        ),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+      ],
       child: const AppRouter(),
     );
   }

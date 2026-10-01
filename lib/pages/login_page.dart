@@ -51,7 +51,10 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
         deviceName: 'mobile',
       );
-      await session.signIn(result.token);
+      final userName = result.user == null
+          ? null
+          : '${result.user!.firstName} ${result.user!.lastName}'.trim();
+      await session.signIn(result.token, userName: userName);
 
       if (!mounted) return;
       context.go('/home');

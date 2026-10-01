@@ -6,6 +6,7 @@ import '../core/models/dashboard_overview.dart';
 import '../core/services/api_exception.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/dashboard_service.dart';
+import '../core/services/location_provider.dart';
 import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
 import '../widgets/home/assigned_project_card.dart';
@@ -35,6 +36,18 @@ class _HomePageState extends State<HomePage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _overviewFuture ??= _loadOverview();
+
+    final locationProvider = context.read<LocationProvider>();
+    if (locationProvider.locationLabel == null &&
+        !locationProvider.isLoading &&
+        locationProvider.errorMessage == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        context.read<LocationProvider>().refreshLocation();
+      });
+    }
   }
 
   Future<DashboardOverviewData> _loadOverview() async {
@@ -47,8 +60,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _overviewFuture = _loadOverview());
-    await _overviewFuture;
+    final overviewFuture = _loadOverview();
+    setState(() => _overviewFuture = overviewFuture);
+    await Future.wait([
+      overviewFuture,
+      context.read<LocationProvider>().refreshLocation(),
+    ]);
   }
 
   Future<void> _handleLogout() async {
