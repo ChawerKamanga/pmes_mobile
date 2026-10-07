@@ -6,12 +6,14 @@ import '../services/session_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/dashboard_overview.dart';
 import '../../pages/home_page.dart';
+import '../../pages/project_gps_update_page.dart';
 import '../../pages/login_page.dart';
 import '../../pages/project_map_page.dart';
 
 const _loginPath = '/login';
 const _homePath = '/home';
 const _projectMapPath = '/home/project-map';
+const _projectGpsUpdatePath = '/home/project-map/update-gps';
 
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
@@ -56,6 +58,21 @@ class _AppRouterState extends State<AppRouter> {
               );
             }
             return ProjectMapPage(location: location);
+          },
+        ),
+        GoRoute(
+          path: _projectGpsUpdatePath,
+          name: 'project-gps-update',
+          builder: (_, state) {
+            final args = state.extra;
+            if (args is! ProjectGpsUpdateArgs) {
+              return const Scaffold(
+                body: Center(
+                  child: Text('Unable to open GPS update for this project.'),
+                ),
+              );
+            }
+            return ProjectGpsUpdatePage(args: args);
           },
         ),
       ],

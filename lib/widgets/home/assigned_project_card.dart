@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/models/dashboard_overview.dart';
 import '../../core/theme/app_colors.dart';
+import '../../pages/project_gps_update_page.dart';
 import 'project_map_banner.dart';
 
 class AssignedProjectCard extends StatelessWidget {
@@ -20,8 +22,8 @@ class AssignedProjectCard extends StatelessWidget {
     final section = project.section != null && project.section!.isNotEmpty
         ? _stripHtml(project.section!)
         : null;
-    final activity = project.activity != null && project.activity!.isNotEmpty
-        ? _stripHtml(project.activity!)
+    final activity = project.activity.isNotEmpty
+      ? _stripHtml(project.activity)
         : null;
     final subtitle = [
       if (section != null && section.isNotEmpty) section,
@@ -126,7 +128,16 @@ class AssignedProjectCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    context.pushNamed(
+                      'project-gps-update',
+                      extra: ProjectGpsUpdateArgs(
+                        projectId: project.id,
+                        projectTitle: project.title,
+                        location: project.location,
+                      ),
+                    );
+                  },
                   icon: const Icon(
                     Icons.near_me_outlined,
                     size: 16,

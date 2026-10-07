@@ -9,4 +9,6 @@ class ApiConstants {
   static const String logout = '$baseUrl/logout';
 
   static const String dashboardOverview = '$baseUrl/dashboard/overview';
+
+  static String projectGps(String projectId) => '$baseUrl/projects/$projectId/gps';
 }
