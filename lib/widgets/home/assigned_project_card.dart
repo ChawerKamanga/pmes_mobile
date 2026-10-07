@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models/dashboard_overview.dart';
 import '../../core/theme/app_colors.dart';
+import 'project_map_banner.dart';
 
 class AssignedProjectCard extends StatelessWidget {
   const AssignedProjectCard({required this.project, super.key});
@@ -40,7 +41,7 @@ class AssignedProjectCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'CONTRACT REF: ${project.contractRef}',
+                  'PROJECT CODE: ${project.contractRef}',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -119,7 +120,7 @@ class AssignedProjectCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _buildMapBanner(project.location),
+          ProjectMapBanner(location: project.location),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -185,7 +186,7 @@ class AssignedProjectCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Milestone Completion',
+                'Completion Status',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -246,82 +247,6 @@ class AssignedProjectCard extends StatelessWidget {
             style: const TextStyle(fontSize: 10, color: AppColors.neutral),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMapBanner(ProjectLocation location) {
-    final label = [
-      if (location.latitude.isNotEmpty && location.longitude.isNotEmpty)
-        '${location.latitude}, ${location.longitude}',
-      location.name,
-    ].where((s) => s.isNotEmpty).join(' • ');
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 100,
-        decoration: const BoxDecoration(color: AppColors.inputBackground),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const Center(
-              child: Icon(
-                Icons.map_outlined,
-                size: 32,
-                color: AppColors.neutral,
-              ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                color: AppColors.primaryLight,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.card,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          color: AppColors.card,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (location.accuracy != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondaryLight.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '±${location.accuracy}m Fixed',
-                          style: const TextStyle(
-                            color: AppColors.secondaryLight,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
