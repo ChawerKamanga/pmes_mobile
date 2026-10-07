@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 
 import '../services/session_provider.dart';
 import '../theme/app_theme.dart';
+import '../models/dashboard_overview.dart';
 import '../../pages/home_page.dart';
 import '../../pages/login_page.dart';
+import '../../pages/project_map_page.dart';
 
 const _loginPath = '/login';
 const _homePath = '/home';
+const _projectMapPath = '/home/project-map';
 
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
@@ -39,6 +42,21 @@ class _AppRouterState extends State<AppRouter> {
           path: _homePath,
           name: 'home',
           builder: (_, _) => const HomePage(),
+        ),
+        GoRoute(
+          path: _projectMapPath,
+          name: 'project-map',
+          builder: (_, state) {
+            final location = state.extra;
+            if (location is! ProjectLocation) {
+              return const Scaffold(
+                body: Center(
+                  child: Text('Project map is unavailable for this item.'),
+                ),
+              );
+            }
+            return ProjectMapPage(location: location);
+          },
         ),
       ],
     );
