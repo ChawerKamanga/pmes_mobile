@@ -1,15 +1,27 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/models/dashboard_overview.dart';
 import '../../core/theme/app_colors.dart';
 import '../../pages/project_gps_update_page.dart';
 import 'project_map_banner.dart';
 
-class AssignedProjectCard extends StatelessWidget {
+class AssignedProjectCard extends StatefulWidget {
   const AssignedProjectCard({required this.project, super.key});
 
   final AssignedProject project;
+
+  @override
+  State<AssignedProjectCard> createState() => _AssignedProjectCardState();
+}
+
+class _AssignedProjectCardState extends State<AssignedProjectCard> {
+  final ImagePicker _imagePicker = ImagePicker();
+  final List<XFile> _progressImages = [];
 
   static String _stripHtml(String value, {int maxLength = 220}) {
     final plainText = value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
@@ -17,13 +29,58 @@ class AssignedProjectCard extends StatelessWidget {
     return '${plainText.substring(0, maxLength).trim()}…';
   }
 
+  Future<void> _logProgress() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    try {
+      final images = source == ImageSource.gallery
+          ? await _imagePicker.pickMultiImage()
+          : await _imagePicker
+                .pickImage(source: ImageSource.camera)
+                .then((image) => image == null ? <XFile>[] : [image]);
+      if (!mounted || images.isEmpty) return;
+      setState(() => _progressImages.addAll(images));
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error.message ?? 'Unable to open the selected image source.',
+            ),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final project = widget.project;
     final section = project.section != null && project.section!.isNotEmpty
         ? _stripHtml(project.section!)
         : null;
     final activity = project.activity.isNotEmpty
-      ? _stripHtml(project.activity)
+        ? _stripHtml(project.activity)
         : null;
     final subtitle = [
       if (section != null && section.isNotEmpty) section,
@@ -159,7 +216,7 @@ class AssignedProjectCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _logProgress,
                   icon: const Icon(
                     Icons.add_a_photo_outlined,
                     size: 16,
@@ -178,6 +235,49 @@ class AssignedProjectCard extends StatelessWidget {
               ),
             ],
           ),
+          if (_progressImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 76,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _progressImages.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) => Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(_progressImages[index].path),
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: IconButton(
+                        tooltip: 'Remove image',
+                        onPressed: () {
+                          setState(() => _progressImages.removeAt(index));
+                        },
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(28, 28),
+                          maximumSize: const Size(28, 28),
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.close, size: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -221,7 +321,9 @@ class AssignedProjectCard extends StatelessWidget {
               value: progress,
               minHeight: 6,
               backgroundColor: AppColors.neutralLight,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.secondary,
+              ),
             ),
           ),
         ],
