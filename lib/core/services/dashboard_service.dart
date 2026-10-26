@@ -111,9 +111,12 @@ class DashboardService {
     required String name,
     required String description,
   }) async {
+    if (name.trim().isEmpty || description.trim().isEmpty) {
+      throw const ApiException('Name and description are required.');
+    }
     if (name.length > 255 || description.length > 500) {
       throw const ApiException(
-        'The progress photo details exceed the allowed length.',
+        'The document name or description exceeds the allowed length.',
       );
     }
 
@@ -121,10 +124,10 @@ class DashboardService {
     try {
       fileSize = await File(file.path).length();
     } on FileSystemException {
-      throw const ApiException('Unable to read the selected photo.');
+      throw const ApiException('Unable to read the selected file.');
     }
     if (fileSize > 5120 * 1024) {
-      throw const ApiException('Each progress photo must be 5 MB or smaller.');
+      throw const ApiException('The selected file must be 5 MB or smaller.');
     }
 
     final request =
@@ -136,6 +139,7 @@ class DashboardService {
           ..headers['Authorization'] = 'Bearer $token'
           ..fields['name'] = name
           ..fields['description'] = description;
+    request.headers['Authorization'] = 'Bearer $token';
     late final http.Response response;
     try {
       request.files.add(
@@ -153,7 +157,7 @@ class DashboardService {
         'Unable to reach the server. Check your connection.',
       );
     } on FileSystemException {
-      throw const ApiException('Unable to read the selected photo.');
+      throw const ApiException('Unable to read the selected file.');
     }
 
     if (response.statusCode == 201 || response.statusCode == 200) {
@@ -166,7 +170,7 @@ class DashboardService {
       body = decoded is Map<String, dynamic> ? decoded : {};
     } on FormatException {
       throw ApiException(
-        'Failed to upload the progress photo (HTTP ${response.statusCode}).',
+        'Failed to upload the document (HTTP ${response.statusCode}).',
         statusCode: response.statusCode,
       );
     }
@@ -183,7 +187,7 @@ class DashboardService {
     throw ApiException(
       validationMessage ??
           body['message'] as String? ??
-          'Failed to upload the progress photo.',
+          'Failed to upload the document.',
       statusCode: response.statusCode,
     );
   }

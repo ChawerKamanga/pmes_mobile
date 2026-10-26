@@ -6,6 +6,7 @@ import '../services/session_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/dashboard_overview.dart';
 import '../../pages/home_page.dart';
+import '../../pages/project_document_upload_page.dart';
 import '../../pages/project_gps_update_page.dart';
 import '../../pages/login_page.dart';
 import '../../pages/project_map_page.dart';
@@ -14,6 +15,7 @@ const _loginPath = '/login';
 const _homePath = '/home';
 const _projectMapPath = '/home/project-map';
 const _projectGpsUpdatePath = '/home/project-map/update-gps';
+const _projectDocumentUploadPath = '/home/project-document-upload';
 
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
@@ -73,6 +75,19 @@ class _AppRouterState extends State<AppRouter> {
               );
             }
             return ProjectGpsUpdatePage(args: args);
+          },
+        ),
+        GoRoute(
+          path: _projectDocumentUploadPath,
+          name: 'project-document-upload',
+          builder: (_, state) {
+            final projects = state.extra;
+            if (projects is! List<AssignedProject>) {
+              return const Scaffold(
+                body: Center(child: Text('Unable to load assigned projects.')),
+              );
+            }
+            return ProjectDocumentUploadPage(projects: projects);
           },
         ),
       ],

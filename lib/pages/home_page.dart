@@ -108,12 +108,35 @@ class _HomePageState extends State<HomePage> {
     context.go('/login');
   }
 
+  Future<void> _openNewUpdate() async {
+    final projects = _overview?.projects ?? [];
+    if (projects.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('No assigned projects are available.')),
+        );
+      return;
+    }
+
+    final uploaded = await context.pushNamed<bool>(
+      'project-document-upload',
+      extra: projects,
+    );
+    if (!mounted || uploaded != true) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Document uploaded successfully.')),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const HomeAppBar(),
-      bottomNavigationBar: const CustomBottomNavBar(),
+      bottomNavigationBar: CustomBottomNavBar(onNewUpdate: _openNewUpdate),
       body: _buildBody(),
     );
   }
@@ -125,7 +148,8 @@ class _HomePageState extends State<HomePage> {
 
     if (_overview == null) {
       return _ErrorState(
-        message: _initialErrorMessage ??
+        message:
+            _initialErrorMessage ??
             'Something went wrong while loading the dashboard.',
         onRetry: _loadInitialOverview,
       );
@@ -135,109 +159,108 @@ class _HomePageState extends State<HomePage> {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 20.0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- Top Field Command Dark Card ---
-                  const FieldCommandCard(),
-                  const SizedBox(height: 16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- Top Field Command Dark Card ---
+            const FieldCommandCard(),
+            const SizedBox(height: 16),
 
-                  // --- Stats Row (Assigned Projects & Fiscal Allocation) ---
-                  Row(
-                    children: [
-                      Expanded(
-                        child: HomeStatCard(
-                          icon: Icons.folder_outlined,
-                          iconColor: AppColors.secondary,
-                          value: overview.summary.assignedProjects.count,
-                          label: 'Assigned Projects',
-                          subLabel: overview.summary.assignedProjects.description,
-                          rightWidget: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              overview.summary.assignedProjects.statusLabel,
-                              style: const TextStyle(
-                                color: AppColors.secondary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
+            // --- Stats Row (Assigned Projects & Fiscal Allocation) ---
+            Row(
+              children: [
+                Expanded(
+                  child: HomeStatCard(
+                    icon: Icons.folder_outlined,
+                    iconColor: AppColors.secondary,
+                    value: overview.summary.assignedProjects.count,
+                    label: 'Assigned Projects',
+                    subLabel: overview.summary.assignedProjects.description,
+                    rightWidget: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        overview.summary.assignedProjects.statusLabel,
+                        style: const TextStyle(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: HomeStatCard(
+                    icon: Icons.account_balance_wallet_outlined,
+                    iconColor: AppColors.secondary,
+                    value: overview.summary.fiscalAllocation.formattedAmount,
+                    label: overview.summary.fiscalAllocation.label,
+                    subLabel:
+                        overview.summary.fiscalAllocation.fiscalYear ??
+                        overview.summary.fiscalAllocation.currency,
+                    rightWidget:
+                        overview.summary.fiscalAllocation.percentageChange ==
+                            null
+                        ? null
+                        : Text(
+                            '${overview.summary.fiscalAllocation.percentageChange! >= 0 ? '+' : ''}${overview.summary.fiscalAllocation.percentageChange}%',
+                            style: const TextStyle(
+                              color: AppColors.neutralDark,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: HomeStatCard(
-                          icon: Icons.account_balance_wallet_outlined,
-                          iconColor: AppColors.secondary,
-                          value: overview.summary.fiscalAllocation.formattedAmount,
-                          label: overview.summary.fiscalAllocation.label,
-                          subLabel: overview.summary.fiscalAllocation.fiscalYear ??
-                              overview.summary.fiscalAllocation.currency,
-                          rightWidget: overview.summary.fiscalAllocation.percentageChange ==
-                                  null
-                              ? null
-                              : Text(
-                                  '${overview.summary.fiscalAllocation.percentageChange! >= 0 ? '+' : ''}${overview.summary.fiscalAllocation.percentageChange}%',
-                                  style: const TextStyle(
-                                    color: AppColors.neutralDark,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
                   ),
-                  const SizedBox(height: 12),
-
-                  KpiSummaryCard(
-                    verified: overview.summary.kpiOverview.verified,
-                    total: overview.summary.kpiOverview.total,
-                    completionPercentage:
-                        overview.summary.kpiOverview.completionPercentage,
-                    nextReviewLabel: overview.summary.kpiOverview.nextReviewLabel,
-                  ),
-                  const SizedBox(height: 28),
-
-                  AssignedProjectsHeader(activeCount: overview.projects.length),
-                  const SizedBox(height: 16),
-
-                  if (overview.projects.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        'No assigned projects yet.',
-                        style: TextStyle(color: AppColors.neutral),
-                      ),
-                    )
-                  else
-                    for (final project in overview.projects) ...[
-                      AssignedProjectCard(project: project),
-                      const SizedBox(height: 16),
-                    ],
-                  const SizedBox(height: 16),
-
-                  // Logout Button
-                  HomeLogoutButton(
-                    isLoggingOut: _isLoggingOut,
-                    onPressed: _handleLogout,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+            const SizedBox(height: 12),
+
+            KpiSummaryCard(
+              verified: overview.summary.kpiOverview.verified,
+              total: overview.summary.kpiOverview.total,
+              completionPercentage:
+                  overview.summary.kpiOverview.completionPercentage,
+              nextReviewLabel: overview.summary.kpiOverview.nextReviewLabel,
+            ),
+            const SizedBox(height: 28),
+
+            AssignedProjectsHeader(activeCount: overview.projects.length),
+            const SizedBox(height: 16),
+
+            if (overview.projects.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'No assigned projects yet.',
+                  style: TextStyle(color: AppColors.neutral),
+                ),
+              )
+            else
+              for (final project in overview.projects) ...[
+                AssignedProjectCard(project: project),
+                const SizedBox(height: 16),
+              ],
+            const SizedBox(height: 16),
+
+            // Logout Button
+            HomeLogoutButton(
+              isLoggingOut: _isLoggingOut,
+              onPressed: _handleLogout,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -443,14 +466,10 @@ class _ErrorState extends StatelessWidget {
               style: const TextStyle(color: AppColors.neutral),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onRetry,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),
     );
   }
 }
-

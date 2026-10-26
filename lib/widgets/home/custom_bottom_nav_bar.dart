@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
-  const CustomBottomNavBar({super.key});
+  const CustomBottomNavBar({required this.onNewUpdate, super.key});
+
+  final VoidCallback onNewUpdate;
 
   @override
   State<CustomBottomNavBar> createState() => _CustomBottomNavBarState();
@@ -152,7 +154,10 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
     required IconData icon,
   }) {
     return InkWell(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        setState(() => _selectedIndex = index);
+        widget.onNewUpdate();
+      },
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       child: Column(
@@ -174,11 +179,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar> {
                   ),
                 ],
               ),
-              child: Icon(
-                icon,
-                color: AppColors.card,
-                size: 26,
-              ),
+              child: Icon(icon, color: AppColors.card, size: 26),
             ),
           ),
           Transform.translate(
