@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models/dashboard_overview.dart';
 import '../core/theme/app_colors.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({
     required this.userName,
     required this.userEmail,
@@ -18,19 +24,128 @@ class ProfilePage extends StatelessWidget {
   final VoidCallback onLogout;
 
   @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  static const _profilePhotoKey = 'profile_photo_path';
+  final ImagePicker _imagePicker = ImagePicker();
+  String? _profilePhotoPath;
+  bool _isPickingPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfilePhoto();
+  }
+
+  Future<void> _loadProfilePhoto() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final savedPath = preferences.getString(_profilePhotoKey);
+      if (savedPath == null) return;
+      if (!await File(savedPath).exists()) {
+        await preferences.remove(_profilePhotoKey);
+        return;
+      }
+      if (mounted) setState(() => _profilePhotoPath = savedPath);
+    } on Exception {
+      if (mounted) {
+        _showPhotoMessage('Unable to load your saved profile photo.');
+      }
+    }
+  }
+
+  Future<void> _chooseProfilePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    setState(() => _isPickingPhoto = true);
+    try {
+      final image = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
+      if (image == null) return;
+
+      final appDirectory = await getApplicationDocumentsDirectory();
+      final extension = _imageExtension(image.name);
+      final destination = File(
+        '${appDirectory.path}${Platform.pathSeparator}profile_photo.$extension',
+      );
+      await File(image.path).copy(destination.path);
+
+      final preferences = await SharedPreferences.getInstance();
+      final saved = await preferences.setString(
+        _profilePhotoKey,
+        destination.path,
+      );
+      if (!saved) {
+        throw const FileSystemException('Could not save profile photo path.');
+      }
+      if (mounted) {
+        setState(() => _profilePhotoPath = destination.path);
+      }
+    } on PlatformException {
+      if (mounted) {
+        _showPhotoMessage('Unable to access the selected photo.');
+      }
+    } on FileSystemException {
+      if (mounted) _showPhotoMessage('Unable to save the profile photo.');
+    } on Exception {
+      if (mounted) _showPhotoMessage('Unable to update the profile photo.');
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
+    }
+  }
+
+  String _imageExtension(String name) {
+    final separator = name.lastIndexOf('.');
+    if (separator == -1 || separator == name.length - 1) return 'jpg';
+    final extension = name.substring(separator + 1).toLowerCase();
+    return RegExp(r'^[a-z0-9]+$').hasMatch(extension) ? extension : 'jpg';
+  }
+
+  void _showPhotoMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = userName?.trim().isNotEmpty == true
-        ? userName!.trim()
+    final name = widget.userName?.trim().isNotEmpty == true
+        ? widget.userName!.trim()
         : 'Name unavailable';
-    final email = userEmail?.trim().isNotEmpty == true
-        ? userEmail!.trim()
+    final email = widget.userEmail?.trim().isNotEmpty == true
+        ? widget.userEmail!.trim()
         : 'Email unavailable';
-    final projects = overview?.projects;
+    final projects = widget.overview?.projects;
     final completedProjects = projects?.where((project) {
       final progress = project.status.progress.trim().toLowerCase();
       return progress == 'complete' || progress == 'completed';
     }).length;
-    final allocation = overview?.summary.fiscalAllocation;
+    final allocation = widget.overview?.summary.fiscalAllocation;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -41,14 +156,12 @@ class ProfilePage extends StatelessWidget {
           _ProfileIdentityCard(
             name: name,
             email: email,
+            profilePhotoPath: _profilePhotoPath,
             onEdit: () => _showUnavailableFeature(
               context,
               'Profile editing is not available yet.',
             ),
-            onChangePhoto: () => _showUnavailableFeature(
-              context,
-              'Profile photo updates are not available yet.',
-            ),
+            onChangePhoto: _isPickingPhoto ? null : _chooseProfilePhoto,
           ),
           const SizedBox(height: 24),
           _ProfileSectionCard(
@@ -122,7 +235,7 @@ class ProfilePage extends StatelessWidget {
                 title: 'Log Out',
                 description: 'Sign out of your account',
                 showChevron: false,
-                onTap: onLogout,
+                onTap: widget.onLogout,
               ),
             ],
           ),
@@ -171,14 +284,16 @@ class _ProfileIdentityCard extends StatelessWidget {
   const _ProfileIdentityCard({
     required this.name,
     required this.email,
+    required this.profilePhotoPath,
     required this.onEdit,
     required this.onChangePhoto,
   });
 
   final String name;
   final String email;
+  final String? profilePhotoPath;
   final VoidCallback onEdit;
-  final VoidCallback onChangePhoto;
+  final VoidCallback? onChangePhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +307,10 @@ class _ProfileIdentityCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _ProfileAvatar(onChangePhoto: onChangePhoto),
+          _ProfileAvatar(
+            profilePhotoPath: profilePhotoPath,
+            onChangePhoto: onChangePhoto,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -268,9 +386,13 @@ class _ProfileIdentityCard extends StatelessWidget {
 }
 
 class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({required this.onChangePhoto});
+  const _ProfileAvatar({
+    required this.profilePhotoPath,
+    required this.onChangePhoto,
+  });
 
-  final VoidCallback onChangePhoto;
+  final String? profilePhotoPath;
+  final VoidCallback? onChangePhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -287,10 +409,22 @@ class _ProfileAvatar extends StatelessWidget {
               color: Color(0xFFEAF0FF),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.person_rounded,
-              color: AppColors.secondary,
-              size: 54,
+            child: ClipOval(
+              child: profilePhotoPath == null
+                  ? const Icon(
+                      Icons.person_rounded,
+                      color: AppColors.secondary,
+                      size: 54,
+                    )
+                  : Image.file(
+                      File(profilePhotoPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.secondary,
+                        size: 54,
+                      ),
+                    ),
             ),
           ),
           Positioned(

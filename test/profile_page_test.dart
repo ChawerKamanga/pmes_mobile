@@ -83,6 +83,29 @@ void main() {
     expect(find.text('Sam Kamanga').last, findsOneWidget);
   });
 
+  testWidgets('profile photo control offers local photo sources', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfilePage(
+            userName: 'Sam Kamanga',
+            userEmail: 'sam@example.org',
+            overview: null,
+            onLogout: _ignoreLogout,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Change profile photo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose from gallery'), findsOneWidget);
+    expect(find.text('Take a photo'), findsOneWidget);
+  });
+
   testWidgets('logout menu delegates to the existing logout workflow', (
     tester,
   ) async {

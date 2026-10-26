@@ -333,13 +333,7 @@ class _HomePageState extends State<HomePage> {
                 AssignedProjectCard(project: project),
                 const SizedBox(height: 16),
               ],
-            const SizedBox(height: 16),
-
-            // Logout Button
-            HomeLogoutButton(
-              isLoggingOut: _isLoggingOut,
-              onPressed: _confirmLogout,
-            ),
+            const SizedBox(height: 16)
           ],
         ),
       ),
