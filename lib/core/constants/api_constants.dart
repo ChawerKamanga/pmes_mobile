@@ -10,5 +10,9 @@ class ApiConstants {
 
   static const String dashboardOverview = '$baseUrl/dashboard/overview';
 
-  static String projectGps(String projectId) => '$baseUrl/projects/$projectId/gps';
+  static String projectGps(String projectId) =>
+      '$baseUrl/projects/$projectId/gps';
+
+  static String projectDocuments(String projectId) =>
+      '$baseUrl/projects/$projectId/documents';
 }

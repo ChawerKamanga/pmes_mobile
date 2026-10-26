@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/models/dashboard_overview.dart';
+import '../../core/services/api_exception.dart';
+import '../../core/services/dashboard_service.dart';
+import '../../core/services/session_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../pages/project_gps_update_page.dart';
 import 'project_map_banner.dart';
@@ -21,7 +25,10 @@ class AssignedProjectCard extends StatefulWidget {
 
 class _AssignedProjectCardState extends State<AssignedProjectCard> {
   final ImagePicker _imagePicker = ImagePicker();
+  static const DashboardService _dashboardService = DashboardService();
   final List<XFile> _progressImages = [];
+  bool _isUploadingProgressImages = false;
+  int _uploadedImageCount = 0;
 
   static String _stripHtml(String value, {int maxLength = 220}) {
     final plainText = value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
@@ -58,7 +65,10 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                 .pickImage(source: ImageSource.camera)
                 .then((image) => image == null ? <XFile>[] : [image]);
       if (!mounted || images.isEmpty) return;
-      setState(() => _progressImages.addAll(images));
+      setState(() {
+        _progressImages.addAll(images);
+        _uploadedImageCount = 0;
+      });
     } on PlatformException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -71,6 +81,60 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
           ),
         );
     }
+  }
+
+  Future<void> _uploadProgressImages() async {
+    if (_progressImages.isEmpty || _isUploadingProgressImages) return;
+
+    final token = context.read<SessionProvider>().token;
+    if (token == null) {
+      _showMessage('You are not signed in. Please log in again.');
+      return;
+    }
+
+    final project = widget.project;
+    final images = List<XFile>.of(_progressImages);
+    setState(() {
+      _isUploadingProgressImages = true;
+      _uploadedImageCount = 0;
+    });
+
+    try {
+      for (final image in images) {
+        await _dashboardService.uploadProjectDocument(
+          token: token,
+          projectId: project.id,
+          file: image,
+          name: 'Progress update: ${project.title}',
+          description: 'Progress photo for ${project.title}',
+        );
+        if (!mounted) return;
+        setState(() {
+          _progressImages.removeWhere(
+            (selected) => selected.path == image.path,
+          );
+          _uploadedImageCount++;
+        });
+      }
+      if (mounted) {
+        _showMessage(
+          'Uploaded ${images.length} progress '
+          '${images.length == 1 ? 'photo' : 'photos'}.',
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingProgressImages = false);
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -216,7 +280,7 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _logProgress,
+                  onPressed: _isUploadingProgressImages ? null : _logProgress,
                   icon: const Icon(
                     Icons.add_a_photo_outlined,
                     size: 16,
@@ -259,9 +323,13 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                       right: 0,
                       child: IconButton(
                         tooltip: 'Remove image',
-                        onPressed: () {
-                          setState(() => _progressImages.removeAt(index));
-                        },
+                        onPressed: _isUploadingProgressImages
+                            ? null
+                            : () {
+                                setState(() {
+                                  _progressImages.removeAt(index);
+                                });
+                              },
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black54,
                           foregroundColor: Colors.white,
@@ -275,6 +343,30 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isUploadingProgressImages
+                    ? null
+                    : _uploadProgressImages,
+                icon: _isUploadingProgressImages
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cloud_upload_outlined, size: 18),
+                label: Text(
+                  _isUploadingProgressImages
+                      ? 'Uploading ${_uploadedImageCount + 1} of '
+                            '${_uploadedImageCount + _progressImages.length}…'
+                      : 'Upload ${_progressImages.length} '
+                            '${_progressImages.length == 1 ? 'photo' : 'photos'}',
+                ),
+                style: _buttonStyle(AppColors.secondary),
               ),
             ),
           ],
