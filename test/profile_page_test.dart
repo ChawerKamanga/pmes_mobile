@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pmes_mobile/core/theme/app_colors.dart';
 import 'package:pmes_mobile/pages/profile_page.dart';
 
 void main() {
@@ -101,6 +102,22 @@ void main() {
     );
 
     await tester.ensureVisible(find.text('Log Out'));
+    final logoutTile = find.ancestor(
+      of: find.text('Log Out'),
+      matching: find.byType(InkWell),
+    );
+    expect(
+      find.descendant(
+        of: logoutTile,
+        matching: find.byIcon(Icons.chevron_right_rounded),
+      ),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(find.text('Log Out')).style?.color,
+      AppColors.primary,
+    );
+
     await tester.tap(find.text('Log Out'));
     expect(logoutRequested, isTrue);
   });

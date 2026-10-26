@@ -121,7 +121,7 @@ class ProfilePage extends StatelessWidget {
                 icon: Icons.logout_rounded,
                 title: 'Log Out',
                 description: 'Sign out of your account',
-                destructive: true,
+                showChevron: false,
                 onTap: onLogout,
               ),
             ],
@@ -506,14 +506,14 @@ class _ProfileMenuTileData {
     required this.title,
     required this.description,
     required this.onTap,
-    this.destructive = false,
+    this.showChevron = true,
   });
 
   final IconData icon;
   final String title;
   final String description;
   final VoidCallback onTap;
-  final bool destructive;
+  final bool showChevron;
 }
 
 class _ProfileMenuTile extends StatelessWidget {
@@ -523,8 +523,6 @@ class _ProfileMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = data.destructive ? AppColors.secondary : AppColors.primary;
-
     return Semantics(
       button: true,
       label: '${data.title}, ${data.description}',
@@ -533,12 +531,6 @@ class _ProfileMenuTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
-          decoration: data.destructive
-              ? BoxDecoration(
-                  color: const Color(0xFFEAF0FF),
-                  borderRadius: BorderRadius.circular(12),
-                )
-              : null,
           child: Row(
             children: [
               Container(
@@ -558,7 +550,7 @@ class _ProfileMenuTile extends StatelessWidget {
                     Text(
                       data.title,
                       style: TextStyle(
-                        color: color,
+                        color: AppColors.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -575,12 +567,14 @@ class _ProfileMenuTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.neutralLight,
-                size: 22,
-              ),
+              if (data.showChevron) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutralLight,
+                  size: 22,
+                ),
+              ],
             ],
           ),
         ),
