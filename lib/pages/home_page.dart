@@ -9,6 +9,7 @@ import '../core/services/auth_service.dart';
 import '../core/services/dashboard_service.dart';
 import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
+import 'profile_page.dart';
 import '../widgets/home/assigned_project_card.dart';
 import '../widgets/home/assigned_projects_header.dart';
 import '../widgets/home/custom_bottom_nav_bar.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   static const _authService = AuthService();
   static const _dashboardService = DashboardService();
   bool _isLoggingOut = false;
+  int _selectedTab = 0;
 
   DashboardOverviewData? _overview;
   bool _isInitialLoading = true;
@@ -96,16 +98,82 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _handleLogout() async {
     setState(() => _isLoggingOut = true);
+    final messenger = ScaffoldMessenger.of(context);
     final session = context.read<SessionProvider>();
     final token = session.token;
-    if (token != null) {
-      try {
-        await _authService.logout(token: token);
-      } catch (_) {}
+    String? serverLogoutError;
+    try {
+      if (token != null) {
+        try {
+          await _authService.logout(token: token);
+        } catch (error) {
+          serverLogoutError = error is ApiException
+              ? error.message
+              : 'The server could not confirm the logout.';
+        }
+      }
+      await session.signOut();
+      if (!mounted) return;
+      context.go('/login');
+      if (serverLogoutError != null) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'You were signed out on this device. $serverLogoutError',
+              ),
+            ),
+          );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is ApiException
+          ? error.message
+          : 'Unable to clear the local session. Please try again.';
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
     }
-    await session.signOut();
-    if (!mounted) return;
-    context.go('/login');
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text(
+          'You will be signed out of your PMES account on this device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+    if (shouldLogout == true && mounted) {
+      await _handleLogout();
+    }
+  }
+
+  void _onDestinationSelected(int index) {
+    if (index == 2) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Sync Queue is not available yet.')),
+        );
+      return;
+    }
+    setState(() => _selectedTab = index);
   }
 
   Future<void> _openNewUpdate() async {
@@ -136,12 +204,26 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const HomeAppBar(),
-      bottomNavigationBar: CustomBottomNavBar(onNewUpdate: _openNewUpdate),
+      bottomNavigationBar: CustomBottomNavBar(
+        onNewUpdate: _openNewUpdate,
+        selectedIndex: _selectedTab,
+        onDestinationSelected: _onDestinationSelected,
+      ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
+    if (_selectedTab == 3) {
+      final session = context.watch<SessionProvider>();
+      return ProfilePage(
+        userName: session.userName,
+        userEmail: session.userEmail,
+        overview: _overview,
+        onLogout: _confirmLogout,
+      );
+    }
+
     if (_isInitialLoading) {
       return const _HomePageLoadingShimmer();
     }
@@ -256,7 +338,7 @@ class _HomePageState extends State<HomePage> {
             // Logout Button
             HomeLogoutButton(
               isLoggingOut: _isLoggingOut,
-              onPressed: _handleLogout,
+              onPressed: _confirmLogout,
             ),
           ],
         ),

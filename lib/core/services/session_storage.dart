@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SessionStorage {
   static const _tokenKey = 'auth_token';
   static const _userNameKey = 'user_name';
+  static const _userEmailKey = 'user_email';
 
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,6 +29,20 @@ class SessionStorage {
     return prefs.getString(_userNameKey);
   }
 
+  static Future<void> saveUserEmail(String? userEmail) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (userEmail == null || userEmail.isEmpty) {
+      await prefs.remove(_userEmailKey);
+    } else {
+      await prefs.setString(_userEmailKey, userEmail);
+    }
+  }
+
+  static Future<String?> readUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userEmailKey);
+  }
+
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
@@ -36,5 +51,10 @@ class SessionStorage {
   static Future<void> clearUserName() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userNameKey);
+  }
+
+  static Future<void> clearUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_userEmailKey);
   }
 }

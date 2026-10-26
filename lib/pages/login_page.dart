@@ -55,7 +55,11 @@ class _LoginPageState extends State<LoginPage> {
       final userName = result.user == null
           ? null
           : '${result.user!.firstName} ${result.user!.lastName}'.trim();
-      await session.signIn(result.token, userName: userName);
+      await session.signIn(
+        result.token,
+        userName: userName,
+        userEmail: result.user?.email,
+      );
 
       if (!mounted) return;
       context.go('/home');
