@@ -9,7 +9,6 @@ import '../core/models/dashboard_overview.dart';
 import '../core/services/api_exception.dart';
 import '../core/services/dashboard_service.dart';
 import '../core/services/session_provider.dart';
-import '../core/theme/app_colors.dart';
 
 class ProjectDocumentUploadPage extends StatefulWidget {
   const ProjectDocumentUploadPage({required this.projects, super.key});
@@ -23,7 +22,6 @@ class ProjectDocumentUploadPage extends StatefulWidget {
 
 class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
   static const _dashboardService = DashboardService();
-  static const _inputFillColor = Color(0xFFEFF4FB);
   static const _inputRadius = 12.0;
 
   final _formKey = GlobalKey<FormState>();
@@ -112,8 +110,9 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('New Update')),
       body: SafeArea(
         child: Form(
@@ -124,7 +123,7 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
               DropdownButtonFormField<AssignedProject>(
                 initialValue: _selectedProject,
                 isExpanded: true,
-                decoration: _inputDecoration(labelText: 'Project'),
+                decoration: _inputDecoration(colorScheme, labelText: 'Project'),
                 items: widget.projects
                     .map(
                       (project) => DropdownMenuItem(
@@ -148,7 +147,7 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
                 enabled: !_isSubmitting,
                 maxLength: 255,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: _inputDecoration(labelText: 'Name'),
+                decoration: _inputDecoration(colorScheme, labelText: 'Name'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Enter a name for this update.';
@@ -167,6 +166,7 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
                 maxLines: 4,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: _inputDecoration(
+                  colorScheme,
                   labelText: 'Description',
                   alignLabelWithHint: true,
                 ),
@@ -190,9 +190,9 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
                       : 'Change file',
                 ),
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: _inputFillColor,
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide.none,
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.onSurface,
+                  side: BorderSide(color: colorScheme.outlineVariant),
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_inputRadius),
@@ -203,13 +203,16 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
                 const SizedBox(height: 8),
                 Text(
                   _selectedFile!.name,
-                  style: const TextStyle(color: AppColors.neutralDark),
+                  style: TextStyle(color: colorScheme.onSurface),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Maximum file size: 5 MB',
-                  style: TextStyle(color: AppColors.neutral, fontSize: 12),
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
               const SizedBox(height: 24),
@@ -218,20 +221,20 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.secondary,
+                    foregroundColor: colorScheme.onSecondary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(_inputRadius),
                     ),
                   ),
                   icon: _isSubmitting
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: colorScheme.onSecondary,
                           ),
                         )
                       : const Icon(Icons.cloud_upload_outlined),
@@ -251,7 +254,8 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
     );
   }
 
-  InputDecoration _inputDecoration({
+  InputDecoration _inputDecoration(
+    ColorScheme colorScheme, {
     required String labelText,
     bool alignLabelWithHint = false,
   }) {
@@ -259,18 +263,18 @@ class _ProjectDocumentUploadPageState extends State<ProjectDocumentUploadPage> {
       labelText: labelText,
       alignLabelWithHint: alignLabelWithHint,
       filled: true,
-      fillColor: _inputFillColor,
+      fillColor: colorScheme.surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(_inputRadius),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(_inputRadius),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(_inputRadius),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: colorScheme.secondary, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );

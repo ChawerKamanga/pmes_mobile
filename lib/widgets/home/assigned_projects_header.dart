@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-
 class AssignedProjectsHeader extends StatelessWidget {
   const AssignedProjectsHeader({required this.activeCount, super.key});
 
@@ -9,30 +7,31 @@ class AssignedProjectsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'Assigned Field Projects',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryDark,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.secondary,
+                color: colorScheme.secondary,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 '$activeCount Active',
-                style: const TextStyle(
-                  color: AppColors.card,
+                style: TextStyle(
+                  color: colorScheme.onSecondary,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -43,10 +42,14 @@ class AssignedProjectsHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.tune, size: 18, color: AppColors.primaryDark),
+          child: Icon(
+            Icons.tune,
+            size: 18,
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );

@@ -273,7 +273,6 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: HomeStatCard(
                     icon: Icons.folder_outlined,
-                    iconColor: AppColors.secondary,
                     value: overview.summary.assignedProjects.count,
                     label: 'Assigned Projects',
                     subLabel: overview.summary.assignedProjects.description,
@@ -283,13 +282,15 @@ class _HomePageState extends State<HomePage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.08),
+                        color: Theme.of(context).colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         overview.summary.assignedProjects.statusLabel,
-                        style: const TextStyle(
-                          color: AppColors.secondary,
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSecondaryContainer,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -301,7 +302,6 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: HomeStatCard(
                     icon: Icons.account_balance_wallet_outlined,
-                    iconColor: AppColors.secondary,
                     value: overview.summary.fiscalAllocation.formattedAmount,
                     label: overview.summary.fiscalAllocation.label,
                     subLabel:
@@ -313,8 +313,10 @@ class _HomePageState extends State<HomePage> {
                         ? null
                         : Text(
                             '${overview.summary.fiscalAllocation.percentageChange! >= 0 ? '+' : ''}${overview.summary.fiscalAllocation.percentageChange}%',
-                            style: const TextStyle(
-                              color: AppColors.neutralDark,
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -556,7 +558,9 @@ class _ErrorState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.neutral),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Retry')),

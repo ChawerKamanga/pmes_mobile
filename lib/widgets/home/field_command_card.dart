@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/services/connectivity_provider.dart';
 import '../../core/services/location_provider.dart';
 import '../../core/services/session_provider.dart';
-import '../../core/theme/app_colors.dart';
 
 class FieldCommandCard extends StatefulWidget {
   const FieldCommandCard({super.key});
@@ -27,16 +26,19 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final userName = context.watch<SessionProvider>().userName;
     final locationProvider = context.watch<LocationProvider>();
     final connectivityProvider = context.watch<ConnectivityProvider>();
 
     final statusText = connectivityProvider.isChecking
-      ? 'Checking...'
-      : (connectivityProvider.isOnline ? 'Online' : 'Offline');
+        ? 'Checking...'
+        : (connectivityProvider.isOnline ? 'Online' : 'Offline');
     final statusColor = connectivityProvider.isChecking
-      ? AppColors.neutral
-      : (connectivityProvider.isOnline ? AppColors.tertiary : AppColors.error);
+        ? colorScheme.onSurfaceVariant
+        : (connectivityProvider.isOnline
+              ? colorScheme.tertiary
+              : colorScheme.error);
 
     final locationText =
         locationProvider.locationLabel ??
@@ -47,7 +49,7 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -60,7 +62,7 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
                 'FIELD COMMAND',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.card.withValues(alpha: 0.5),
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -71,21 +73,21 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  color: colorScheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(
                       Icons.sync_problem,
-                      color: AppColors.secondary,
+                      color: colorScheme.onSecondaryContainer,
                       size: 16,
                     ),
                     SizedBox(width: 6),
                     Text(
                       '3 Pending',
                       style: TextStyle(
-                        color: AppColors.secondary,
+                        color: colorScheme.onSecondaryContainer,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -98,10 +100,10 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
           const SizedBox(height: 16),
           Text(
             'Welcome back,\n${userName?.isNotEmpty == true ? userName : 'Field Officer'}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
-              color: AppColors.card,
+              color: colorScheme.onSurface,
               height: 1.2,
             ),
           ),
@@ -110,7 +112,7 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
             children: [
               Icon(
                 Icons.location_on_outlined,
-                color: AppColors.card.withValues(alpha: 0.6),
+                color: colorScheme.onSurfaceVariant,
                 size: 18,
               ),
               const SizedBox(width: 6),
@@ -120,7 +122,7 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppColors.card.withValues(alpha: 0.6),
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 14,
                   ),
                 ),
@@ -133,7 +135,7 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
                 icon: Icon(
                   Icons.refresh,
                   size: 18,
-                  color: AppColors.card.withValues(alpha: 0.7),
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -143,17 +145,19 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
               _StatusIndicator(
                 color: statusColor,
                 text: statusText,
+                colorScheme: colorScheme,
               ),
               const SizedBox(width: 8),
               IconButton(
                 tooltip: 'Refresh internet status',
                 onPressed: connectivityProvider.isChecking
                     ? null
-                    : () => context.read<ConnectivityProvider>().refreshStatus(),
+                    : () =>
+                          context.read<ConnectivityProvider>().refreshStatus(),
                 icon: Icon(
                   Icons.wifi_tethering,
                   size: 18,
-                  color: AppColors.card.withValues(alpha: 0.75),
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -165,17 +169,22 @@ class _FieldCommandCardState extends State<FieldCommandCard> {
 }
 
 class _StatusIndicator extends StatelessWidget {
-  const _StatusIndicator({required this.color, required this.text});
+  const _StatusIndicator({
+    required this.color,
+    required this.text,
+    required this.colorScheme,
+  });
 
   final Color color;
   final String text;
+  final ColorScheme colorScheme;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.card.withValues(alpha: 0.05),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -189,7 +198,7 @@ class _StatusIndicator extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(color: AppColors.card, fontSize: 12),
+            style: TextStyle(color: colorScheme.onSurface, fontSize: 12),
           ),
         ],
       ),

@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/dashboard_overview.dart';
 import '../../core/services/connectivity_provider.dart';
-import '../../core/theme/app_colors.dart';
 
 class ProjectMapBanner extends StatelessWidget {
   const ProjectMapBanner({required this.location, super.key});
@@ -22,6 +21,7 @@ class ProjectMapBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final coordinates = _coordinates;
     final isOnline = context.select(
       (ConnectivityProvider connectivity) => connectivity.isOnline,
@@ -35,7 +35,7 @@ class ProjectMapBanner extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Material(
-        color: AppColors.inputBackground,
+        color: colorScheme.surfaceContainerHighest,
         child: InkWell(
           onTap: coordinates == null
               ? null
@@ -69,9 +69,9 @@ class ProjectMapBanner extends StatelessWidget {
                               point: coordinates,
                               width: 34,
                               height: 34,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.location_on,
-                                color: AppColors.secondary,
+                                color: colorScheme.secondary,
                                 size: 30,
                               ),
                             ),
@@ -81,11 +81,11 @@ class ProjectMapBanner extends StatelessWidget {
                     ),
                   )
                 else
-                  const Center(
+                  Center(
                     child: Icon(
                       Icons.map_outlined,
                       size: 32,
-                      color: AppColors.neutral,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 const Positioned(
@@ -94,7 +94,7 @@ class ProjectMapBanner extends StatelessWidget {
                   child: Icon(
                     Icons.open_in_full,
                     size: 16,
-                    color: AppColors.card,
+                    color: Colors.white,
                   ),
                 ),
                 Align(
@@ -105,20 +105,20 @@ class ProjectMapBanner extends StatelessWidget {
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    color: AppColors.primaryLight,
+                    color: colorScheme.primary,
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on_outlined,
-                          color: AppColors.card,
+                          color: colorScheme.onPrimary,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             label,
-                            style: const TextStyle(
-                              color: AppColors.card,
+                            style: TextStyle(
+                              color: colorScheme.onPrimary,
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
@@ -132,15 +132,13 @@ class ProjectMapBanner extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.secondaryLight.withValues(
-                                alpha: 0.2,
-                              ),
+                              color: colorScheme.secondaryContainer,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '±${location.accuracy}m Fixed',
-                              style: const TextStyle(
-                                color: AppColors.secondaryLight,
+                              style: TextStyle(
+                                color: colorScheme.onSecondaryContainer,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),

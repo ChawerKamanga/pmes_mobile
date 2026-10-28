@@ -10,7 +10,6 @@ import '../../core/models/dashboard_overview.dart';
 import '../../core/services/api_exception.dart';
 import '../../core/services/dashboard_service.dart';
 import '../../core/services/session_provider.dart';
-import '../../core/theme/app_colors.dart';
 import '../../pages/project_gps_update_page.dart';
 import 'project_map_banner.dart';
 
@@ -139,6 +138,7 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final project = widget.project;
     final section = project.section != null && project.section!.isNotEmpty
         ? _stripHtml(project.section!)
@@ -153,7 +153,7 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -165,10 +165,10 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
               Expanded(
                 child: Text(
                   'PROJECT CODE: ${project.contractRef}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.neutral,
+                    color: colorScheme.onSurfaceVariant,
                     letterSpacing: 0.5,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -180,14 +180,14 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                 children: [
                   _StatusTag(
                     label: project.status.publication,
-                    color: AppColors.secondaryLight.withValues(alpha: 0.18),
-                    textColor: AppColors.secondaryDark,
+                    color: colorScheme.secondaryContainer,
+                    textColor: colorScheme.onSecondaryContainer,
                   ),
                   const SizedBox(width: 6),
                   _StatusTag(
                     label: project.status.progress,
-                    color: AppColors.primaryLight.withValues(alpha: 0.14),
-                    textColor: AppColors.primaryLight,
+                    color: colorScheme.primaryContainer,
+                    textColor: colorScheme.onPrimaryContainer,
                   ),
                 ],
               ),
@@ -196,10 +196,10 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
           const SizedBox(height: 10),
           Text(
             project.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.primaryDark,
+              color: colorScheme.onSurface,
               height: 1.25,
             ),
           ),
@@ -209,7 +209,10 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
               subtitle,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: AppColors.neutral),
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
           const SizedBox(height: 16),
@@ -259,21 +262,14 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                       ),
                     );
                   },
-                  icon: const Icon(
-                    Icons.near_me_outlined,
-                    size: 16,
-                    color: AppColors.primaryDark,
-                  ),
+                  icon: const Icon(Icons.near_me_outlined, size: 16),
                   label: const Text(
                     'Update GPS',
-                    style: TextStyle(
-                      color: AppColors.primaryDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   style: _buttonStyle(
-                    AppColors.secondary.withValues(alpha: 0.08),
+                    colorScheme.secondaryContainer,
+                    foregroundColor: colorScheme.onSecondaryContainer,
                   ),
                 ),
               ),
@@ -281,20 +277,15 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _isUploadingProgressImages ? null : _logProgress,
-                  icon: const Icon(
-                    Icons.add_a_photo_outlined,
-                    size: 16,
-                    color: AppColors.card,
-                  ),
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 16),
                   label: const Text(
                     'Log Progress',
-                    style: TextStyle(
-                      color: AppColors.card,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
-                  style: _buttonStyle(AppColors.secondary),
+                  style: _buttonStyle(
+                    colorScheme.secondary,
+                    foregroundColor: colorScheme.onSecondary,
+                  ),
                 ),
               ),
             ],
@@ -366,7 +357,10 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
                       : 'Upload ${_progressImages.length} '
                             '${_progressImages.length == 1 ? 'photo' : 'photos'}',
                 ),
-                style: _buttonStyle(AppColors.secondary),
+                style: _buttonStyle(
+                  colorScheme.secondary,
+                  foregroundColor: colorScheme.onSecondary,
+                ),
               ),
             ),
           ],
@@ -376,11 +370,12 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
   }
 
   Widget _buildMilestoneProgress(num milestoneCompletion) {
+    final colorScheme = Theme.of(context).colorScheme;
     final progress = (milestoneCompletion / 100).clamp(0, 1).toDouble();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -388,20 +383,20 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Completion Status',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.neutralDark,
+                  color: colorScheme.onSurface,
                 ),
               ),
               Text(
                 '${milestoneCompletion.round()}%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.secondaryDark,
+                  color: colorScheme.secondary,
                 ),
               ),
             ],
@@ -412,10 +407,8 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
-              backgroundColor: AppColors.neutralLight,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppColors.secondary,
-              ),
+              backgroundColor: colorScheme.outlineVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.secondary),
             ),
           ),
         ],
@@ -428,37 +421,42 @@ class _AssignedProjectCardState extends State<AssignedProjectCard> {
     required String title,
     required String subtitle,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 18, color: AppColors.secondary),
+          Icon(icon, size: 18, color: colorScheme.secondary),
           const SizedBox(height: 6),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: AppColors.primaryDark,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 10, color: AppColors.neutral),
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
     );
   }
 
-  ButtonStyle _buttonStyle(Color backgroundColor) {
+  ButtonStyle _buttonStyle(
+    Color backgroundColor, {
+    required Color foregroundColor,
+  }) {
     return ElevatedButton.styleFrom(
       backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
       elevation: 0,
       padding: const EdgeInsets.symmetric(vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

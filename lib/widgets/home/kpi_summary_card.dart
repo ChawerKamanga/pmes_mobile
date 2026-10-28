@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-
 class KpiSummaryCard extends StatelessWidget {
   const KpiSummaryCard({
     required this.verified,
@@ -18,10 +16,11 @@ class KpiSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -30,12 +29,12 @@ class KpiSummaryCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.secondaryLight,
+              color: colorScheme.secondary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.verified_outlined,
-              color: AppColors.card,
+              color: colorScheme.onSecondary,
               size: 24,
             ),
           ),
@@ -48,10 +47,10 @@ class KpiSummaryCard extends StatelessWidget {
                   children: [
                     Text(
                       '$verified / $total',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryDark,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -61,13 +60,13 @@ class KpiSummaryCard extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.12),
+                        color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${completionPercentage.round()}% Target',
-                        style: const TextStyle(
-                          color: AppColors.secondaryDark,
+                        style: TextStyle(
+                          color: colorScheme.onSecondaryContainer,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -78,12 +77,19 @@ class KpiSummaryCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'KPIs Verified • $nextReviewLabel',
-                  style: const TextStyle(fontSize: 12, color: AppColors.neutral),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.neutral, size: 20),
+          Icon(
+            Icons.chevron_right,
+            color: colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
         ],
       ),
     );
