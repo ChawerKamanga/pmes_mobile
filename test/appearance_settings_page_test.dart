@@ -16,7 +16,6 @@ void main() {
 
     await tester.pumpWidget(_buildPage(settings));
 
-    expect(find.text('Appearance'), findsOneWidget);
     expect(
       find.text('Customize how PMES looks on your device.'),
       findsOneWidget,
@@ -63,10 +62,6 @@ void main() {
 Widget _buildPage(AppearanceSettingsProvider settings) {
   return ChangeNotifierProvider.value(
     value: settings,
-    child: MaterialApp(
-      home: Scaffold(body: AppearanceSettingsPage(onBack: _ignoreBack)),
-    ),
+    child: MaterialApp(home: Scaffold(body: AppearanceSettingsPage())),
   );
 }
-
-void _ignoreBack() {}

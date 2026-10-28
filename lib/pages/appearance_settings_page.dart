@@ -4,9 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/services/appearance_settings_provider.dart';
 
 class AppearanceSettingsPage extends StatelessWidget {
-  const AppearanceSettingsPage({required this.onBack, super.key});
-
-  final VoidCallback onBack;
+  const AppearanceSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +22,6 @@ class AppearanceSettingsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _PageHeading(onBack: onBack),
                 const SizedBox(height: 28),
                 if (settings.loadError != null) ...[
                   _LoadError(message: settings.loadError!),
@@ -111,14 +108,6 @@ class AppearanceSettingsPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  'Your display preferences are saved on this device.',
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.65),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
               ],
             ),
           ),
@@ -139,59 +128,6 @@ class AppearanceSettingsPage extends StatelessWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(error.toString())));
     }
-  }
-}
-
-class _PageHeading extends StatelessWidget {
-  const _PageHeading({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        IconButton(
-          onPressed: onBack,
-          tooltip: 'Back to Profile',
-          style: IconButton.styleFrom(
-            foregroundColor: colorScheme.onSurface,
-            minimumSize: const Size(48, 48),
-            padding: EdgeInsets.zero,
-          ),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 2),
-              Text(
-                'Appearance',
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Customize how PMES looks on your device.',
-                style: TextStyle(
-                  color: colorScheme.onSurface.withValues(alpha: 0.68),
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 }
 

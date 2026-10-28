@@ -207,7 +207,16 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: const HomeAppBar(),
+      appBar: _isAppearanceOpen
+          ? AppBar(
+              leading: IconButton(
+                onPressed: () => setState(() => _isAppearanceOpen = false),
+                tooltip: 'Back to Profile',
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              title: const Text('Appearance'),
+            )
+          : const HomeAppBar(),
       bottomNavigationBar: CustomBottomNavBar(
         onNewUpdate: _openNewUpdate,
         selectedIndex: _selectedTab,
@@ -220,9 +229,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBody() {
     if (_selectedTab == 3) {
       if (_isAppearanceOpen) {
-        return AppearanceSettingsPage(
-          onBack: () => setState(() => _isAppearanceOpen = false),
-        );
+        return const AppearanceSettingsPage();
       }
       final session = context.watch<SessionProvider>();
       return ProfilePage(
