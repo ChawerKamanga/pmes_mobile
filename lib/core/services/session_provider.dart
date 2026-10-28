@@ -45,4 +45,10 @@ class SessionProvider extends ChangeNotifier {
     _userEmail = null;
     notifyListeners();
   }
+
+  Future<void> updateUserName(String userName) async {
+    await SessionStorage.saveUserName(userName);
+    _userName = userName;
+    notifyListeners();
+  }
 }

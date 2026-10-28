@@ -238,6 +238,7 @@ class _HomePageState extends State<HomePage> {
         overview: _overview,
         onLogout: _confirmLogout,
         onAppearance: () => setState(() => _isAppearanceOpen = true),
+        onProfileNameChanged: session.updateUserName,
       );
     }
 

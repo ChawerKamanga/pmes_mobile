@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models/dashboard_overview.dart';
 import '../core/theme/app_colors.dart';
+import 'basic_information_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -16,6 +17,7 @@ class ProfilePage extends StatefulWidget {
     required this.overview,
     required this.onLogout,
     this.onAppearance,
+    this.onProfileNameChanged,
     super.key,
   });
 
@@ -24,6 +26,7 @@ class ProfilePage extends StatefulWidget {
   final DashboardOverviewData? overview;
   final VoidCallback onLogout;
   final VoidCallback? onAppearance;
+  final Future<void> Function(String)? onProfileNameChanged;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -173,7 +176,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.person_outline_rounded,
                 title: 'Basic Information',
                 description: 'Name, email, phone, location',
-                onTap: () => _showBasicInformation(context, name, email),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => BasicInformationPage(
+                      userName: widget.userName,
+                      userEmail: widget.userEmail,
+                      profilePhotoPath: _profilePhotoPath,
+                      onNameChanged: widget.onProfileNameChanged,
+                    ),
+                  ),
+                ),
               ),
               _ProfileMenuTileData(
                 icon: Icons.shield_outlined,
@@ -233,35 +245,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: widget.onLogout,
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBasicInformation(BuildContext context, String name, String email) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Basic Information'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InformationLine(label: 'Name', value: name),
-            const SizedBox(height: 12),
-            _InformationLine(label: 'Email', value: email),
-            const SizedBox(height: 12),
-            const Text(
-              'Phone and location are not available in your account details.',
-              style: TextStyle(color: AppColors.neutral),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
           ),
         ],
       ),
@@ -580,36 +563,6 @@ class _ProfileMenuTile extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _InformationLine extends StatelessWidget {
-  const _InformationLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colorScheme.onSurface.withValues(alpha: 0.68),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 2),
-        SelectableText(
-          value,
-          style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
-        ),
-      ],
     );
   }
 }
