@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 
@@ -13,6 +14,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       elevation: 0,
       backgroundColor: AppColors.primary,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
       automaticallyImplyLeading: false,
       titleSpacing: 20,
       title: Row(
@@ -26,9 +28,12 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_outlined, color: AppColors.card),
+          icon: const Icon(
+            Icons.notifications_none_outlined,
+            color: AppColors.card,
+          ),
           onPressed: () {},
-        )
+        ),
       ],
     );
   }

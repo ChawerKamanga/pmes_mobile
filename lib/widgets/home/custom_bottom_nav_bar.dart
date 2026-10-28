@@ -18,12 +18,13 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Container(
         padding: const EdgeInsets.only(top: 8, bottom: 8),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
@@ -41,18 +42,21 @@ class CustomBottomNavBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             _buildNavItem(
+              colorScheme: colorScheme,
               index: 0,
               label: 'Projects',
               icon: Icons.grid_view_rounded,
             ),
-            _buildCenterNavItem(),
+            _buildCenterNavItem(colorScheme),
             _buildNavItem(
+              colorScheme: colorScheme,
               index: 2,
               label: 'Sync Queue',
               icon: Icons.sync,
               badgeCount: pendingSyncCount,
             ),
             _buildNavItem(
+              colorScheme: colorScheme,
               index: 3,
               label: 'Profile',
               icon: Icons.account_circle_outlined,
@@ -64,6 +68,7 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem({
+    required ColorScheme colorScheme,
     required int index,
     required String label,
     required IconData icon,
@@ -90,7 +95,9 @@ class CustomBottomNavBar extends StatelessWidget {
                   Icon(
                     icon,
                     size: index == 0 ? 26 : 28,
-                    color: isSelected ? AppColors.secondary : AppColors.neutral,
+                    color: isSelected
+                        ? colorScheme.secondary
+                        : colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   if (badgeCount != null && badgeCount > 0)
                     Positioned(
@@ -127,8 +134,8 @@ class CustomBottomNavBar extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                   color: isSelected
-                      ? AppColors.secondary
-                      : AppColors.neutralDark,
+                      ? colorScheme.secondary
+                      : colorScheme.onSurface.withValues(alpha: 0.72),
                 ),
               ),
             ],
@@ -138,7 +145,7 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterNavItem() {
+  Widget _buildCenterNavItem(ColorScheme colorScheme) {
     return Semantics(
       button: true,
       label: 'New Update',
@@ -173,12 +180,12 @@ class CustomBottomNavBar extends StatelessWidget {
             ),
             Transform.translate(
               offset: const Offset(0, -12),
-              child: const Text(
+              child: Text(
                 'New Update',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.neutralDark,
+                  color: colorScheme.onSurface.withValues(alpha: 0.72),
                 ),
               ),
             ),

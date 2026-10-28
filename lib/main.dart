@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/services/connectivity_provider.dart';
 import 'core/services/location_provider.dart';
 import 'core/services/session_provider.dart';
+import 'core/services/appearance_settings_provider.dart';
 import 'core/router/app_router.dart';
 
 void main() {
@@ -19,6 +20,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (_) => SessionProvider()..restoreSession(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AppearanceSettingsProvider()..load(),
         ),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),

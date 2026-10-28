@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../services/appearance_settings_provider.dart';
 import '../services/session_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/dashboard_overview.dart';
@@ -112,10 +113,18 @@ class _AppRouterState extends State<AppRouter> {
 
   @override
   Widget build(BuildContext context) {
+    final appearance = context.watch<AppearanceSettingsProvider>();
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'PMES Portal',
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.lightTheme(highContrast: appearance.highContrast),
+      darkTheme: AppTheme.darkTheme(highContrast: appearance.highContrast),
+      themeMode: appearance.themeMode,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(disableAnimations: appearance.reduceMotion),
+        child: child ?? const SizedBox.shrink(),
+      ),
       routerConfig: _router,
     );
   }

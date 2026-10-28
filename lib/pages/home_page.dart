@@ -10,6 +10,7 @@ import '../core/services/dashboard_service.dart';
 import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_page.dart';
+import 'appearance_settings_page.dart';
 import '../widgets/home/assigned_project_card.dart';
 import '../widgets/home/assigned_projects_header.dart';
 import '../widgets/home/custom_bottom_nav_bar.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   static const _authService = AuthService();
   static const _dashboardService = DashboardService();
   bool _isLoggingOut = false;
+  bool _isAppearanceOpen = false;
   int _selectedTab = 0;
 
   DashboardOverviewData? _overview;
@@ -172,7 +174,10 @@ class _HomePageState extends State<HomePage> {
         );
       return;
     }
-    setState(() => _selectedTab = index);
+    setState(() {
+      _selectedTab = index;
+      _isAppearanceOpen = false;
+    });
   }
 
   Future<void> _openNewUpdate() async {
@@ -201,7 +206,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: const HomeAppBar(),
       bottomNavigationBar: CustomBottomNavBar(
         onNewUpdate: _openNewUpdate,
@@ -214,12 +219,18 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBody() {
     if (_selectedTab == 3) {
+      if (_isAppearanceOpen) {
+        return AppearanceSettingsPage(
+          onBack: () => setState(() => _isAppearanceOpen = false),
+        );
+      }
       final session = context.watch<SessionProvider>();
       return ProfilePage(
         userName: session.userName,
         userEmail: session.userEmail,
         overview: _overview,
         onLogout: _confirmLogout,
+        onAppearance: () => setState(() => _isAppearanceOpen = true),
       );
     }
 
@@ -332,7 +343,7 @@ class _HomePageState extends State<HomePage> {
                 AssignedProjectCard(project: project),
                 const SizedBox(height: 16),
               ],
-            const SizedBox(height: 16)
+            const SizedBox(height: 16),
           ],
         ),
       ),

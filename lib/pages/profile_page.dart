@@ -15,6 +15,7 @@ class ProfilePage extends StatefulWidget {
     required this.userEmail,
     required this.overview,
     required this.onLogout,
+    this.onAppearance,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class ProfilePage extends StatefulWidget {
   final String? userEmail;
   final DashboardOverviewData? overview;
   final VoidCallback onLogout;
+  final VoidCallback? onAppearance;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -216,10 +218,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.palette_outlined,
                 title: 'Appearance',
                 description: 'Theme, language, display',
-                onTap: () => _showUnavailableFeature(
-                  context,
-                  'Appearance settings are not available yet.',
-                ),
+                onTap:
+                    widget.onAppearance ??
+                    () => _showUnavailableFeature(
+                      context,
+                      'Appearance settings are not available yet.',
+                    ),
               ),
               _ProfileMenuTileData(
                 icon: Icons.language_rounded,
@@ -536,11 +540,13 @@ class _ProfileStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       constraints: const BoxConstraints(minHeight: 142),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -560,8 +566,8 @@ class _ProfileStatCard extends StatelessWidget {
             data.value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.primary,
+            style: TextStyle(
+              color: isDark ? colorScheme.onSurface : AppColors.primary,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
@@ -571,8 +577,10 @@ class _ProfileStatCard extends StatelessWidget {
               data.subLabel!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.neutral,
+              style: TextStyle(
+                color: isDark
+                    ? colorScheme.onSurface.withValues(alpha: 0.68)
+                    : AppColors.neutral,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -582,8 +590,10 @@ class _ProfileStatCard extends StatelessWidget {
             data.label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.neutral,
+            style: TextStyle(
+              color: isDark
+                  ? colorScheme.onSurface.withValues(alpha: 0.68)
+                  : AppColors.neutral,
               fontSize: 11,
               height: 1.25,
             ),
@@ -602,10 +612,12 @@ class _ProfileSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -615,8 +627,10 @@ class _ProfileSectionCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 2, bottom: 8),
             child: Text(
               title,
-              style: const TextStyle(
-                color: AppColors.neutral,
+              style: TextStyle(
+                color: isDark
+                    ? colorScheme.onSurface.withValues(alpha: 0.68)
+                    : AppColors.neutral,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -626,7 +640,11 @@ class _ProfileSectionCard extends StatelessWidget {
           for (var index = 0; index < tiles.length; index++) ...[
             _ProfileMenuTile(data: tiles[index]),
             if (index < tiles.length - 1)
-              const Divider(height: 1, indent: 54, color: Color(0xFFE5EAF3)),
+              Divider(
+                height: 1,
+                indent: 54,
+                color: Theme.of(context).dividerColor,
+              ),
           ],
         ],
       ),
@@ -657,6 +675,8 @@ class _ProfileMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Semantics(
       button: true,
       label: '${data.title}, ${data.description}',
@@ -684,7 +704,9 @@ class _ProfileMenuTile extends StatelessWidget {
                     Text(
                       data.title,
                       style: TextStyle(
-                        color: AppColors.primary,
+                        color: isDark
+                            ? colorScheme.onSurface
+                            : AppColors.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -692,8 +714,10 @@ class _ProfileMenuTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       data.description,
-                      style: const TextStyle(
-                        color: AppColors.neutral,
+                      style: TextStyle(
+                        color: isDark
+                            ? colorScheme.onSurface.withValues(alpha: 0.68)
+                            : AppColors.neutral,
                         fontSize: 11,
                         height: 1.25,
                       ),
@@ -725,13 +749,14 @@ class _InformationLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.neutral,
+          style: TextStyle(
+            color: colorScheme.onSurface.withValues(alpha: 0.68),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -739,7 +764,7 @@ class _InformationLine extends StatelessWidget {
         const SizedBox(height: 2),
         SelectableText(
           value,
-          style: const TextStyle(color: AppColors.primary, fontSize: 14),
+          style: TextStyle(color: colorScheme.onSurface, fontSize: 14),
         ),
       ],
     );

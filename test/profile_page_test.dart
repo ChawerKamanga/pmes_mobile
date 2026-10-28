@@ -83,6 +83,30 @@ void main() {
     expect(find.text('Sam Kamanga').last, findsOneWidget);
   });
 
+  testWidgets('appearance menu opens the appearance settings callback', (
+    tester,
+  ) async {
+    var appearanceOpened = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProfilePage(
+            userName: 'Sam Kamanga',
+            userEmail: 'sam@example.org',
+            overview: null,
+            onLogout: _ignoreLogout,
+            onAppearance: () => appearanceOpened = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('Appearance'));
+    await tester.tap(find.text('Appearance'));
+
+    expect(appearanceOpened, isTrue);
+  });
+
   testWidgets('profile photo control offers local photo sources', (
     tester,
   ) async {
