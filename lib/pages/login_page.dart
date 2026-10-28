@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
         result.token,
         userName: userName,
         userEmail: result.user?.email,
+        lastLogin: result.user?.lastLogin,
       );
 
       if (!mounted) return;

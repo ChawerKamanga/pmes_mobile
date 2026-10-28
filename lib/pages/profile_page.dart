@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models/dashboard_overview.dart';
 import '../core/theme/app_colors.dart';
 import 'basic_information_page.dart';
+import 'account_security_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -16,6 +17,7 @@ class ProfilePage extends StatefulWidget {
     required this.userEmail,
     required this.overview,
     required this.onLogout,
+    this.lastLogin,
     this.onAppearance,
     this.onProfileNameChanged,
     super.key,
@@ -25,6 +27,7 @@ class ProfilePage extends StatefulWidget {
   final String? userEmail;
   final DashboardOverviewData? overview;
   final VoidCallback onLogout;
+  final DateTime? lastLogin;
   final VoidCallback? onAppearance;
   final Future<void> Function(String)? onProfileNameChanged;
 
@@ -185,9 +188,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.shield_outlined,
                 title: 'Account Security',
                 description: 'Password, 2FA, login activity',
-                onTap: () => _showUnavailableFeature(
-                  context,
-                  'Security settings are not available yet.',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AccountSecurityPage(
+                      userName: widget.userName,
+                      userEmail: widget.userEmail,
+                      lastLogin: widget.lastLogin,
+                    ),
+                  ),
                 ),
               ),
             ],

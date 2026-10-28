@@ -235,6 +235,7 @@ class _HomePageState extends State<HomePage> {
       return ProfilePage(
         userName: session.userName,
         userEmail: session.userEmail,
+        lastLogin: session.lastLogin,
         overview: _overview,
         onLogout: _confirmLogout,
         onAppearance: () => setState(() => _isAppearanceOpen = true),

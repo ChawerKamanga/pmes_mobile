@@ -4,6 +4,7 @@ class SessionStorage {
   static const _tokenKey = 'auth_token';
   static const _userNameKey = 'user_name';
   static const _userEmailKey = 'user_email';
+  static const _lastLoginKey = 'last_login';
 
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
@@ -43,6 +44,21 @@ class SessionStorage {
     return prefs.getString(_userEmailKey);
   }
 
+  static Future<void> saveLastLogin(DateTime? lastLogin) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (lastLogin == null) {
+      await prefs.remove(_lastLoginKey);
+    } else {
+      await prefs.setString(_lastLoginKey, lastLogin.toIso8601String());
+    }
+  }
+
+  static Future<DateTime?> readLastLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_lastLoginKey);
+    return value == null ? null : DateTime.tryParse(value);
+  }
+
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
@@ -56,5 +72,10 @@ class SessionStorage {
   static Future<void> clearUserEmail() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userEmailKey);
+  }
+
+  static Future<void> clearLastLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastLoginKey);
   }
 }
