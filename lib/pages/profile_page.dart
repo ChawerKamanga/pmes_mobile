@@ -145,12 +145,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final email = widget.userEmail?.trim().isNotEmpty == true
         ? widget.userEmail!.trim()
         : 'Email unavailable';
-    final projects = widget.overview?.projects;
-    final completedProjects = projects?.where((project) {
-      final progress = project.status.progress.trim().toLowerCase();
-      return progress == 'complete' || progress == 'completed';
-    }).length;
-    final allocation = widget.overview?.summary.fiscalAllocation;
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),

@@ -142,26 +142,6 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _showSecuritySettings({required bool twoFactor}) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(twoFactor ? 'Two-factor authentication' : 'Password'),
-        content: Text(
-          twoFactor
-              ? 'Two-factor authentication settings are not available for this account yet.'
-              : 'Your password is managed securely by your PMES account. Use the password reset option on the sign-in page to change it.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
