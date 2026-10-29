@@ -2,13 +2,16 @@
 class ApiConstants {
   ApiConstants._();
 
-  static const String baseUrl = 'https://c709-105-234-174-223.ngrok-free.app/api/v1';
+  static const String baseUrl =
+      'https://c709-105-234-174-223.ngrok-free.app/api/v1';
 
   static const String login = '$baseUrl/login';
 
   static const String logout = '$baseUrl/logout';
 
   static const String dashboardOverview = '$baseUrl/dashboard/overview';
+
+  static const String fieldUpdatesSync = '$baseUrl/field-updates/sync';
 
   static const String userProfile = '$baseUrl/me/profile';
 

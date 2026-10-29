@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/repositories/field_log_repository.dart';
 import '../core/services/connectivity_provider.dart';
+import '../core/services/sync_service.dart';
 import '../core/theme/app_colors.dart';
 
 enum _QueueStatus { pending, syncing, synced, failed }
@@ -15,7 +15,6 @@ class _QueueRecord {
     required this.project,
     required this.status,
     required this.lastAttempt,
-    this.progress = 0,
     this.errorReason,
   });
 
@@ -24,13 +23,11 @@ class _QueueRecord {
   final String project;
   final _QueueStatus status;
   final DateTime lastAttempt;
-  final double progress;
   final String? errorReason;
 
   _QueueRecord copyWith({
     _QueueStatus? status,
     DateTime? lastAttempt,
-    double? progress,
     String? errorReason,
     bool clearError = false,
   }) {
@@ -40,7 +37,6 @@ class _QueueRecord {
       project: project,
       status: status ?? this.status,
       lastAttempt: lastAttempt ?? this.lastAttempt,
-      progress: progress ?? this.progress,
       errorReason: clearError ? null : errorReason ?? this.errorReason,
     );
   }
@@ -54,11 +50,13 @@ class SyncQueuePage extends StatefulWidget {
 }
 
 class _SyncQueuePageState extends State<SyncQueuePage> {
+  final FieldLogRepository _fieldLogRepository = FieldLogRepository();
   List<_QueueRecord> _records = const [];
   bool _isLoading = true;
-  bool _isSyncing = false;
   String? _loadError;
   String? _operationError;
+  SyncService? _observedSyncService;
+  bool _wasSyncing = false;
 
   @override
   void initState() {
@@ -66,68 +64,62 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
     _loadQueue();
   }
 
-  Future<void> _loadQueue() async {
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
-    try {
-      await Future<void>.delayed(const Duration(milliseconds: 450));
-      if (!mounted) return;
-      final now = DateTime.now();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final syncService = context.read<SyncService>();
+    if (!identical(_observedSyncService, syncService)) {
+      _observedSyncService?.removeListener(_onSyncServiceChanged);
+      _observedSyncService = syncService;
+      _wasSyncing = syncService.isSyncing;
+      syncService.addListener(_onSyncServiceChanged);
+    }
+  }
+
+  void _onSyncServiceChanged() {
+    final syncService = _observedSyncService;
+    if (!mounted || syncService == null) return;
+    final isSyncing = syncService.isSyncing;
+    final syncJustFinished = _wasSyncing && !isSyncing;
+    _wasSyncing = isSyncing;
+    setState(() {});
+    if (syncJustFinished) {
+      _loadQueue(showLoading: false);
+    }
+  }
+
+  Future<void> _loadQueue({bool showLoading = true}) async {
+    if (showLoading) {
       setState(() {
-        _records = [
-          _QueueRecord(
-            type: 'Progress report',
-            reference: 'PR-2026-0842',
-            project: 'Mupila Rural Health Centre',
-            status: _QueueStatus.pending,
-            lastAttempt: now.subtract(const Duration(minutes: 8)),
-          ),
-          _QueueRecord(
-            type: 'Site inspection',
-            reference: 'SI-2026-0196',
-            project: 'Kafue District',
-            status: _QueueStatus.syncing,
-            lastAttempt: now.subtract(const Duration(minutes: 2)),
-            progress: 0.68,
-          ),
-          _QueueRecord(
-            type: 'Photo evidence',
-            reference: 'PH-2026-3175',
-            project: 'Chisamba Water Project',
-            status: _QueueStatus.synced,
-            lastAttempt: now.subtract(const Duration(hours: 1)),
-          ),
-          _QueueRecord(
-            type: 'GPS location update',
-            reference: 'GPS-2026-4408',
-            project: 'Lusaka East District',
-            status: _QueueStatus.failed,
-            lastAttempt: now.subtract(const Duration(minutes: 24)),
-            errorReason: 'Upload timed out. Check your connection and retry.',
-          ),
-          _QueueRecord(
-            type: 'Progress report',
-            reference: 'PR-2026-0837',
-            project: 'Chisamba Water Project',
-            status: _QueueStatus.pending,
-            lastAttempt: now.subtract(const Duration(hours: 3)),
-          ),
-          _QueueRecord(
-            type: 'Photo evidence',
-            reference: 'PH-2026-3159',
-            project: 'Mupila Rural Health Centre',
-            status: _QueueStatus.synced,
-            lastAttempt: now.subtract(const Duration(hours: 5)),
-          ),
-        ];
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+    try {
+      final pendingLogs = await _fieldLogRepository.getPendingFieldLogs();
+      if (!mounted) return;
+      setState(() {
+        _records = pendingLogs
+            .map(
+              (log) => _QueueRecord(
+                type: 'Progress report',
+                reference: log.localId,
+                project: log.projectTitle ?? 'Project ${log.projectId}',
+                status: log.lastSyncError == null
+                    ? _QueueStatus.pending
+                    : _QueueStatus.failed,
+                lastAttempt: log.lastSyncAttemptAt ?? log.timestamp,
+                errorReason: log.lastSyncError,
+              ),
+            )
+            .toList(growable: false);
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _loadError = 'Unable to load the sync queue. Please try again.';
+        _loadError =
+            'Unable to load the sync queue. Please try again. ($error)';
         _isLoading = false;
       });
     }
@@ -135,87 +127,30 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
 
   Future<void> _syncPending() async {
     final connectivity = context.read<ConnectivityProvider>();
+    final syncService = context.read<SyncService>();
     if (!connectivity.isOnline) {
       setState(() {
-        _operationError = 'You are offline. Your records are stored on this device and will sync when connectivity returns.';
+        _operationError = 'You are offline. Your records remain stored on this device until upload is available.';
       });
       return;
     }
 
-    final indices = [
-      for (var index = 0; index < _records.length; index++)
-        if (_records[index].status == _QueueStatus.pending ||
-            _records[index].status == _QueueStatus.syncing)
-          index,
-    ];
-    if (indices.isEmpty) {
+    if (_records.isEmpty && !syncService.isSyncing) {
       setState(() {
         _operationError = 'There are no pending uploads to sync.';
       });
       return;
     }
 
-    setState(() {
-      _isSyncing = true;
-      _operationError = null;
-    });
-
-    try {
-      for (final index in indices) {
-        if (!mounted) return;
-        setState(() {
-          _records[index] = _records[index].copyWith(
-            status: _QueueStatus.syncing,
-            progress: _records[index].progress.clamp(0, 0.8),
-          );
-        });
-
-        while (_records[index].progress < 1) {
-          await Future<void>.delayed(const Duration(milliseconds: 300));
-          if (!mounted) return;
-          if (!context.read<ConnectivityProvider>().isOnline) {
-            setState(() {
-              _records[index] = _records[index].copyWith(
-                status: _QueueStatus.failed,
-                lastAttempt: DateTime.now(),
-                errorReason: 'Connection was lost during upload. The record is saved locally.',
-              );
-              _operationError = 'Connection was lost. Unsent records remain stored on this device.';
-            });
-            break;
-          }
-
-          final nextProgress = (_records[index].progress + 0.2)
-              .clamp(0, 1)
-              .toDouble();
-          setState(() {
-            _records[index] = _records[index].copyWith(
-              progress: nextProgress,
-              status: nextProgress == 1
-                  ? _QueueStatus.synced
-                  : _QueueStatus.syncing,
-              lastAttempt: nextProgress == 1
-                  ? DateTime.now()
-                  : _records[index].lastAttempt,
-              clearError: true,
-            );
-          });
-        }
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _operationError =
-              'Something went wrong while syncing. Please try again.';
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isSyncing = false);
+    setState(() => _operationError = null);
+    await syncService.syncPending();
+    if (!mounted) return;
+    if (syncService.lastError != null) {
+      setState(() => _operationError = syncService.lastError);
     }
   }
 
-  Future<void> _retryRecord(int index) async {
-    if (_isSyncing) return;
+  Future<void> _retryRecord() async {
     final connectivity = context.read<ConnectivityProvider>();
     if (!connectivity.isOnline) {
       setState(() {
@@ -223,13 +158,6 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
       });
       return;
     }
-    setState(() {
-      _records[index] = _records[index].copyWith(
-        status: _QueueStatus.pending,
-        progress: 0,
-        clearError: true,
-      );
-    });
     await _syncPending();
   }
 
@@ -279,7 +207,7 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                 value: _statusLabel(record.status),
               ),
               _DetailRow(
-                label: 'Last sync attempt',
+                label: 'Recorded',
                 value: _timeSince(record.lastAttempt),
               ),
               if (record.errorReason != null) ...[
@@ -293,7 +221,7 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                   child: FilledButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      _retryRecord(_records.indexOf(record));
+                      _retryRecord();
                     },
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Retry upload'),
@@ -308,8 +236,15 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
   }
 
   @override
+  void dispose() {
+    _observedSyncService?.removeListener(_onSyncServiceChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final connectivity = context.watch<ConnectivityProvider>();
+    final syncService = context.watch<SyncService>();
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = colorScheme.brightness == Brightness.dark;
     if (_isLoading) {
@@ -329,17 +264,25 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
       return _QueueErrorState(message: _loadError!, onRetry: _loadQueue);
     }
 
+    final displayRecords = _records
+        .map(
+          (record) => record.reference == syncService.currentLocalId
+              ? record.copyWith(status: _QueueStatus.syncing, clearError: true)
+              : record,
+        )
+        .toList(growable: false);
+
     final counts = {
-      _QueueStatus.pending: _records
+      _QueueStatus.pending: displayRecords
           .where((record) => record.status == _QueueStatus.pending)
           .length,
-      _QueueStatus.syncing: _records
+      _QueueStatus.syncing: displayRecords
           .where((record) => record.status == _QueueStatus.syncing)
           .length,
-      _QueueStatus.synced: _records
+      _QueueStatus.synced: displayRecords
           .where((record) => record.status == _QueueStatus.synced)
           .length,
-      _QueueStatus.failed: _records
+      _QueueStatus.failed: displayRecords
           .where((record) => record.status == _QueueStatus.failed)
           .length,
     };
@@ -353,7 +296,7 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
           _SyncOverviewCard(
             isOnline: connectivity.isOnline,
             isChecking: connectivity.isChecking,
-            isSyncing: _isSyncing,
+            isSyncing: syncService.isSyncing,
             onSync: _syncPending,
           ),
           const SizedBox(height: 16),
@@ -422,7 +365,7 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                 ),
               ),
               Text(
-                '${_records.length} records',
+                '${displayRecords.length} records',
                 style: TextStyle(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
@@ -431,15 +374,15 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_records.isEmpty)
+          if (displayRecords.isEmpty)
             const _EmptyQueueState()
           else
-            for (var index = 0; index < _records.length; index++) ...[
+            for (var index = 0; index < displayRecords.length; index++) ...[
               _QueueRecordCard(
-                record: _records[index],
-                onTap: () => _openRecord(_records[index]),
-                onRetry: _records[index].status == _QueueStatus.failed
-                    ? () => _retryRecord(index)
+                record: displayRecords[index],
+                onTap: () => _openRecord(displayRecords[index]),
+                onRetry: displayRecords[index].status == _QueueStatus.failed
+                    ? _retryRecord
                     : null,
               ),
               const SizedBox(height: 12),
@@ -565,7 +508,7 @@ class _SyncOverviewCard extends StatelessWidget {
                           Icon(Icons.sync_rounded, size: 18),
                           SizedBox(width: 7),
                           Text(
-                            'Sync Now',
+                            'Sync now',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ],
@@ -673,7 +616,7 @@ class _OfflineInfoCard extends StatelessWidget {
           const SizedBox(width: 11),
           Expanded(
             child: Text(
-              'Offline records are stored securely on this device and will sync automatically when connectivity returns.',
+              'Field records are stored on this device and sync automatically when an internet connection is available.',
               style: TextStyle(
                 color: colorScheme.onSurface,
                 fontSize: 13,
@@ -781,7 +724,6 @@ class _QueueRecordCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(5),
                   child: LinearProgressIndicator(
-                    value: record.progress,
                     minHeight: 6,
                     backgroundColor: colorScheme.secondary.withValues(
                       alpha: 0.18,
@@ -791,7 +733,7 @@ class _QueueRecordCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '${(record.progress * 100).round()}% uploaded',
+                  'Uploading…',
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 11,

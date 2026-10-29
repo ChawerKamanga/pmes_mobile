@@ -5,6 +5,8 @@ import 'core/services/connectivity_provider.dart';
 import 'core/services/location_provider.dart';
 import 'core/services/session_provider.dart';
 import 'core/services/appearance_settings_provider.dart';
+import 'core/repositories/field_log_repository.dart';
+import 'core/services/sync_service.dart';
 import 'core/router/app_router.dart';
 
 void main() {
@@ -26,6 +28,19 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
+        ChangeNotifierProxyProvider2<
+          ConnectivityProvider,
+          SessionProvider,
+          SyncService
+        >(
+          lazy: false,
+          create: (_) => SyncService(repository: FieldLogRepository()),
+          update: (_, connectivity, session, syncService) => syncService!
+            ..updateDependencies(
+              isOnline: connectivity.isOnline,
+              token: session.token,
+            ),
+        ),
       ],
       child: const AppRouter(),
     );
