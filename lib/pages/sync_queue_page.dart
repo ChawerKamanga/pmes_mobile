@@ -253,7 +253,7 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.neutralLight,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -267,8 +267,8 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
               const SizedBox(height: 6),
               Text(
                 record.reference,
-                style: const TextStyle(
-                  color: AppColors.neutral,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -310,6 +310,8 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
   @override
   Widget build(BuildContext context) {
     final connectivity = context.watch<ConnectivityProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -370,25 +372,29 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                     label: 'Pending uploads',
                     value: counts[_QueueStatus.pending]!,
                     icon: Icons.schedule_rounded,
-                    color: AppColors.secondary,
+                    color: isDark ? colorScheme.secondary : AppColors.secondary,
                   ),
                   _StatCard(
                     label: 'Currently syncing',
                     value: counts[_QueueStatus.syncing]!,
                     icon: Icons.sync_rounded,
-                    color: const Color(0xFFB7791F),
+                    color: isDark
+                        ? const Color(0xFFFFD166)
+                        : const Color(0xFFB7791F),
                   ),
                   _StatCard(
                     label: 'Successfully synced',
                     value: counts[_QueueStatus.synced]!,
                     icon: Icons.check_circle_outline_rounded,
-                    color: AppColors.tertiaryDark,
+                    color: isDark
+                        ? const Color(0xFF6EE7B7)
+                        : AppColors.tertiaryDark,
                   ),
                   _StatCard(
                     label: 'Failed uploads',
                     value: counts[_QueueStatus.failed]!,
                     icon: Icons.error_outline_rounded,
-                    color: AppColors.error,
+                    color: colorScheme.error,
                   ),
                 ],
               );
@@ -411,14 +417,14 @@ class _SyncQueuePageState extends State<SyncQueuePage> {
                   'Queued records',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
               Text(
                 '${_records.length} records',
-                style: const TextStyle(
-                  color: AppColors.neutral,
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -459,6 +465,8 @@ class _SyncOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     final connectionLabel = isChecking
         ? 'Checking connection'
         : isOnline
@@ -468,7 +476,7 @@ class _SyncOverviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: isDark ? const Color(0xFF202C43) : AppColors.primary,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -611,8 +619,8 @@ class _StatCard extends StatelessWidget {
               children: [
                 Text(
                   '$value',
-                  style: const TextStyle(
-                    color: AppColors.primary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 23,
                     fontWeight: FontWeight.w800,
                   ),
@@ -621,8 +629,8 @@ class _StatCard extends StatelessWidget {
                   label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.neutral,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 11,
                     height: 1.25,
                     fontWeight: FontWeight.w600,
@@ -644,26 +652,30 @@ class _OfflineInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.secondary.withValues(alpha: 0.07),
+        color: colorScheme.secondary.withValues(alpha: isDark ? 0.16 : 0.07),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: colorScheme.secondary.withValues(alpha: isDark ? 0.3 : 0.12),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             isOnline ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-            color: AppColors.secondary,
+            color: colorScheme.secondary,
           ),
           const SizedBox(width: 11),
-          const Expanded(
+          Expanded(
             child: Text(
               'Offline records are stored securely on this device and will sync automatically when connectivity returns.',
               style: TextStyle(
-                color: AppColors.primary,
+                color: colorScheme.onSurface,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -688,7 +700,8 @@ class _QueueRecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(record.status);
+    final colorScheme = Theme.of(context).colorScheme;
+    final statusColor = _statusColor(context, record.status);
     return Material(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
@@ -709,8 +722,8 @@ class _QueueRecordCard extends StatelessWidget {
                       children: [
                         Text(
                           record.type,
-                          style: const TextStyle(
-                            color: AppColors.primary,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                           ),
@@ -718,8 +731,8 @@ class _QueueRecordCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           record.reference,
-                          style: const TextStyle(
-                            color: AppColors.neutral,
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -730,34 +743,34 @@ class _QueueRecordCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   _StatusBadge(status: record.status),
                   const SizedBox(width: 8),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
-                    color: AppColors.neutral,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
               const SizedBox(height: 13),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.location_on_outlined,
-                    color: AppColors.neutral,
+                    color: colorScheme.onSurfaceVariant,
                     size: 17,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       record.project,
-                      style: const TextStyle(
-                        color: AppColors.neutralDark,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 13,
                       ),
                     ),
                   ),
                   Text(
                     _timeSince(record.lastAttempt),
-                    style: const TextStyle(
-                      color: AppColors.neutral,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),
@@ -770,12 +783,10 @@ class _QueueRecordCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: record.progress,
                     minHeight: 6,
-                    backgroundColor: AppColors.secondary.withValues(
-                      alpha: 0.12,
+                    backgroundColor: colorScheme.secondary.withValues(
+                      alpha: 0.18,
                     ),
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppColors.secondary,
-                    ),
+                    valueColor: AlwaysStoppedAnimation(colorScheme.secondary),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -815,11 +826,12 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(status);
+    final color = _statusColor(context, status);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: isDark ? 0.18 : 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -842,25 +854,23 @@ class _ErrorMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.08),
+        color: colorScheme.error.withValues(alpha: isDark ? 0.16 : 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.error,
-            size: 19,
-          ),
+          Icon(Icons.error_outline_rounded, color: colorScheme.error, size: 19),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                color: AppColors.error,
+              style: TextStyle(
+                color: colorScheme.error,
                 fontSize: 12,
                 height: 1.35,
               ),
@@ -891,23 +901,30 @@ class _EmptyQueueState extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.cloud_done_outlined, size: 42, color: AppColors.tertiary),
-          SizedBox(height: 12),
+          Icon(
+            Icons.cloud_done_outlined,
+            size: 42,
+            color: Theme.of(context).colorScheme.tertiary,
+          ),
+          const SizedBox(height: 12),
           Text(
             'Your queue is clear',
             style: TextStyle(
-              color: AppColors.primary,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
             'New field records will appear here when they are ready to sync.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.neutral, height: 1.4),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -923,17 +940,14 @@ class _QueueErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.cloud_off_outlined,
-              size: 42,
-              color: AppColors.error,
-            ),
+            Icon(Icons.cloud_off_outlined, size: 42, color: errorColor),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 12),
@@ -966,14 +980,16 @@ class _DetailRow extends StatelessWidget {
             width: 132,
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.neutral),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: AppColors.primary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -984,12 +1000,23 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-Color _statusColor(_QueueStatus status) => switch (status) {
-  _QueueStatus.pending => AppColors.secondary,
-  _QueueStatus.syncing => const Color(0xFFB7791F),
-  _QueueStatus.synced => AppColors.tertiaryDark,
-  _QueueStatus.failed => AppColors.error,
-};
+Color _statusColor(BuildContext context, _QueueStatus status) {
+  final colorScheme = Theme.of(context).colorScheme;
+  if (colorScheme.brightness == Brightness.dark) {
+    return switch (status) {
+      _QueueStatus.pending => colorScheme.secondary,
+      _QueueStatus.syncing => const Color(0xFFFFD166),
+      _QueueStatus.synced => const Color(0xFF6EE7B7),
+      _QueueStatus.failed => colorScheme.error,
+    };
+  }
+  return switch (status) {
+    _QueueStatus.pending => AppColors.secondary,
+    _QueueStatus.syncing => const Color(0xFFB7791F),
+    _QueueStatus.synced => AppColors.tertiaryDark,
+    _QueueStatus.failed => AppColors.error,
+  };
+}
 
 String _statusLabel(_QueueStatus status) => switch (status) {
   _QueueStatus.pending => 'Pending',
