@@ -12,6 +12,8 @@ class BasicInformationPage extends StatefulWidget {
     required this.userEmail,
     this.profilePhotoPath,
     this.onNameChanged,
+    this.organization,
+    this.department,
     super.key,
   });
 
@@ -19,6 +21,8 @@ class BasicInformationPage extends StatefulWidget {
   final String? userEmail;
   final String? profilePhotoPath;
   final Future<void> Function(String)? onNameChanged;
+  final String? organization;
+  final String? department;
 
   @override
   State<BasicInformationPage> createState() => _BasicInformationPageState();
@@ -144,10 +148,30 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.card,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back to Profile',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        titleSpacing: 4,
+        title: const Text('Basic Information'),
+        actions: [
+          IconButton(
+            tooltip: 'Notifications',
+            icon: const Icon(Icons.notifications_none_outlined),
+            onPressed: () {},
+          ),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : LayoutBuilder(
@@ -157,34 +181,12 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
                       children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              tooltip: 'Back to Profile',
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.arrow_back_rounded),
-                              color: AppColors.secondary,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Basic Information',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 20),
                         _ProfileSummaryCard(
                           name: _name,
                           email: _email,
-                          organization: 'Not provided',
-                          department: 'Not provided',
+                          organization: _value(widget.organization ?? ''),
+                          department: _value(widget.department ?? ''),
                           photoPath: widget.profilePhotoPath,
                           isSaving: _isSaving,
                           onEdit: _isSaving ? null : _editDetails,
@@ -225,7 +227,7 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16)
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),

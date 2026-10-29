@@ -226,6 +226,7 @@ class _HomePageState extends State<HomePage> {
       }
       final session = context.watch<SessionProvider>();
       return ProfilePage(
+        token: session.token,
         userName: session.userName,
         userEmail: session.userEmail,
         lastLogin: session.lastLogin,

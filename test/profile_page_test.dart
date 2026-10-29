@@ -1,10 +1,108 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pmes_mobile/core/theme/app_colors.dart';
 import 'package:pmes_mobile/pages/profile_page.dart';
+import 'package:pmes_mobile/core/services/user_profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('loads profile and organization details from the API', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final service = UserProfileService(
+      client: MockClient((request) async {
+        expect(request.url.path, endsWith('/api/v1/me/profile'));
+        expect(request.headers['authorization'], 'Bearer profile-token');
+        return httpResponse({
+          'success': true,
+          'data': {
+            'user': {
+              'id': 42,
+              'first_name': 'API',
+              'last_name': 'Officer',
+              'full_name': 'API Officer',
+              'email': 'api@example.org',
+              'roles': [
+                {'name': 'Field Officer', 'relations': []},
+              ],
+              'account_status': 'active',
+              'last_login': '2026-10-28T08:30:00Z',
+              'department': {
+                'id': 'dept-1',
+                'name': 'Field Operations',
+                'code': 'FO',
+                'description': 'Field projects',
+                'head_of_department': {
+                  'id': 3,
+                  'full_name': 'Department Head',
+                  'email': 'head@example.org',
+                  'roles': [],
+                },
+                'colleagues': [
+                  {
+                    'id': 4,
+                    'full_name': 'Team Member',
+                    'email': 'team@example.org',
+                    'roles': [
+                      {'name': 'Coordinator', 'relations': []},
+                    ],
+                  },
+                ],
+              },
+              'additional_departments': 'Planning',
+            },
+          },
+        });
+      }),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProfilePage(
+            token: 'profile-token',
+            userName: 'Cached Name',
+            userEmail: 'cached@example.org',
+            overview: null,
+            onLogout: _ignoreLogout,
+            profileService: service,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('API Officer'), findsOneWidget);
+    expect(find.text('api@example.org'), findsOneWidget);
+    expect(find.text('Field Officer • Field Operations'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('My Organization'));
+    await tester.tap(find.text('My Organization'));
+    await tester.pumpAndSettle();
+    expect(find.text('Organization details'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Department Head'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Department Head'), findsOneWidget);
+    expect(find.text('Planning'), findsOneWidget);
+    await tester.tapAt(const Offset(20, 10));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Team Members'));
+    await tester.tap(find.text('Team Members'));
+    await tester.pumpAndSettle();
+    expect(find.text('Team Member'), findsOneWidget);
+    expect(find.text('team@example.org • Coordinator'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows account details safely on a narrow screen', (
     tester,
   ) async {
@@ -237,3 +335,6 @@ void main() {
 }
 
 void _ignoreLogout() {}
+
+http.Response httpResponse(Map<String, dynamic> body) =>
+    http.Response(jsonEncode(body), 200);

@@ -7,6 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/models/dashboard_overview.dart';
+import '../core/models/user_profile.dart';
+import '../core/services/api_exception.dart';
+import '../core/services/user_profile_service.dart';
 import '../core/theme/app_colors.dart';
 import 'basic_information_page.dart';
 import 'account_security_page.dart';
@@ -17,9 +20,11 @@ class ProfilePage extends StatefulWidget {
     required this.userEmail,
     required this.overview,
     required this.onLogout,
+    this.token,
     this.lastLogin,
     this.onAppearance,
     this.onProfileNameChanged,
+    this.profileService = const UserProfileService(),
     super.key,
   });
 
@@ -27,9 +32,11 @@ class ProfilePage extends StatefulWidget {
   final String? userEmail;
   final DashboardOverviewData? overview;
   final VoidCallback onLogout;
+  final String? token;
   final DateTime? lastLogin;
   final VoidCallback? onAppearance;
   final Future<void> Function(String)? onProfileNameChanged;
+  final UserProfileService profileService;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -40,11 +47,60 @@ class _ProfilePageState extends State<ProfilePage> {
   final ImagePicker _imagePicker = ImagePicker();
   String? _profilePhotoPath;
   bool _isPickingPhoto = false;
+  bool _isLoadingProfile = false;
+  String? _profileError;
+  ProfileUser? _profile;
+  int _profileRequestId = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfilePhoto();
+    _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.token != widget.token ||
+        oldWidget.profileService != widget.profileService) {
+      _loadProfile();
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    final requestId = ++_profileRequestId;
+    final token = widget.token;
+    if (token == null || token.isEmpty) {
+      if (_profile != null || _profileError != null || _isLoadingProfile) {
+        setState(() {
+          _profile = null;
+          _profileError = null;
+          _isLoadingProfile = false;
+        });
+      }
+      return;
+    }
+    setState(() {
+      _isLoadingProfile = true;
+      _profileError = null;
+    });
+    try {
+      final response = await widget.profileService.getProfile(token: token);
+      if (!mounted || requestId != _profileRequestId) return;
+      setState(() {
+        _profile = response.user;
+        _isLoadingProfile = false;
+      });
+    } catch (error) {
+      if (!mounted || requestId != _profileRequestId) return;
+      setState(() {
+        _profileError = error is ApiException
+            ? error.message
+            : 'Something went wrong while loading your profile.';
+        _isLoadingProfile = false;
+      });
+    }
   }
 
   Future<void> _loadProfilePhoto() async {
@@ -142,12 +198,27 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.userName?.trim().isNotEmpty == true
+    final profileName = _profile?.displayName;
+    final name = profileName?.isNotEmpty == true
+        ? profileName!
+        : widget.userName?.trim().isNotEmpty == true
         ? widget.userName!.trim()
         : 'Name unavailable';
-    final email = widget.userEmail?.trim().isNotEmpty == true
+    final profileEmail = _profile?.email;
+    final email = profileEmail?.isNotEmpty == true
+        ? profileEmail!
+        : widget.userEmail?.trim().isNotEmpty == true
         ? widget.userEmail!.trim()
         : 'Email unavailable';
+    final department = _profile?.department;
+    final departmentName = department?.name ?? 'Department unavailable';
+    final roles = _profile?.roleNames ?? const <String>[];
+    final roleDescription = roles.join(', ');
+    final lastLogin = _profile?.lastLogin ?? widget.lastLogin;
+    final organizationDescription = [
+      if (roleDescription.isNotEmpty) roleDescription,
+      if (departmentName != 'Department unavailable') departmentName,
+    ].join(' • ');
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -158,6 +229,9 @@ class _ProfilePageState extends State<ProfilePage> {
           _ProfileIdentityCard(
             name: name,
             email: email,
+            accountLabel: roles.isNotEmpty
+                ? roleDescription
+                : _profile?.accountStatus ?? 'PMES Account',
             profilePhotoPath: _profilePhotoPath,
             onEdit: () => _showUnavailableFeature(
               context,
@@ -165,6 +239,14 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             onChangePhoto: _isPickingPhoto ? null : _chooseProfilePhoto,
           ),
+          if (_isLoadingProfile) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(),
+          ],
+          if (_profileError != null) ...[
+            const SizedBox(height: 12),
+            _ProfileLoadError(message: _profileError!, onRetry: _loadProfile),
+          ],
           const SizedBox(height: 24),
           _ProfileSectionCard(
             title: 'PERSONAL INFORMATION',
@@ -176,10 +258,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => BasicInformationPage(
-                      userName: widget.userName,
-                      userEmail: widget.userEmail,
+                      userName: name,
+                      userEmail: email,
                       profilePhotoPath: _profilePhotoPath,
                       onNameChanged: widget.onProfileNameChanged,
+                      organization: departmentName,
+                      department: department?.code ?? departmentName,
                     ),
                   ),
                 ),
@@ -191,9 +275,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => AccountSecurityPage(
-                      userName: widget.userName,
-                      userEmail: widget.userEmail,
-                      lastLogin: widget.lastLogin,
+                      userName: name,
+                      userEmail: email,
+                      lastLogin: lastLogin,
                     ),
                   ),
                 ),
@@ -207,20 +291,18 @@ class _ProfilePageState extends State<ProfilePage> {
               _ProfileMenuTileData(
                 icon: Icons.business_outlined,
                 title: 'My Organization',
-                description: 'Role, department, team',
-                onTap: () => _showUnavailableFeature(
-                  context,
-                  'Organization details are not available yet.',
-                ),
+                description: organizationDescription.isEmpty
+                    ? 'Role, department, team'
+                    : organizationDescription,
+                onTap: () => _showOrganizationDetails(_profile),
               ),
               _ProfileMenuTileData(
                 icon: Icons.groups_outlined,
                 title: 'Team Members',
-                description: 'View and manage your team',
-                onTap: () => _showUnavailableFeature(
-                  context,
-                  'Team management is not available in this app yet.',
-                ),
+                description: department == null
+                    ? 'Team members are unavailable'
+                    : '${department.colleagues.length} team members',
+                onTap: () => _showTeamMembers(_profile),
               ),
             ],
           ),
@@ -258,12 +340,40 @@ class _ProfilePageState extends State<ProfilePage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+
+  Future<void> _showOrganizationDetails(ProfileUser? profile) async {
+    if (profile == null) {
+      _showUnavailableFeature(context, 'Organization details are unavailable.');
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _OrganizationDetailsSheet(profile: profile),
+    );
+  }
+
+  Future<void> _showTeamMembers(ProfileUser? profile) async {
+    final department = profile?.department;
+    if (department == null) {
+      _showUnavailableFeature(context, 'Team details are unavailable.');
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _TeamMembersSheet(department: department),
+    );
+  }
 }
 
 class _ProfileIdentityCard extends StatelessWidget {
   const _ProfileIdentityCard({
     required this.name,
     required this.email,
+    required this.accountLabel,
     required this.profilePhotoPath,
     required this.onEdit,
     required this.onChangePhoto,
@@ -271,6 +381,7 @@ class _ProfileIdentityCard extends StatelessWidget {
 
   final String name;
   final String email;
+  final String accountLabel;
   final String? profilePhotoPath;
   final VoidCallback onEdit;
   final VoidCallback? onChangePhoto;
@@ -347,8 +458,8 @@ class _ProfileIdentityCard extends StatelessWidget {
                     color: AppColors.card.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'PMES Account',
+                  child: Text(
+                    accountLabel,
                     style: TextStyle(
                       color: AppColors.card,
                       fontSize: 11,
@@ -364,6 +475,190 @@ class _ProfileIdentityCard extends StatelessWidget {
     );
   }
 }
+
+class _ProfileLoadError extends StatelessWidget {
+  const _ProfileLoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrganizationDetailsSheet extends StatelessWidget {
+  const _OrganizationDetailsSheet({required this.profile});
+
+  final ProfileUser profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final department = profile.department;
+    final head = department?.headOfDepartment;
+    return FractionallySizedBox(
+      heightFactor: 0.75,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        children: [
+          Text(
+            'Organization details',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          _ProfileDetailRow(
+            label: 'Role',
+            value: _profileValue(profile.roleNames.join(', ')),
+          ),
+          _ProfileDetailRow(
+            label: 'Account status',
+            value: _profileValue(profile.accountStatus),
+          ),
+          _ProfileDetailRow(
+            label: 'Department',
+            value: _profileValue(department?.name),
+          ),
+          _ProfileDetailRow(
+            label: 'Department code',
+            value: _profileValue(department?.code),
+          ),
+          _ProfileDetailRow(
+            label: 'Department description',
+            value: _profileValue(department?.description),
+          ),
+          _ProfileDetailRow(
+            label: 'Additional departments',
+            value: _profileValue(profile.additionalDepartments),
+          ),
+          if (head != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Head of department',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            _ProfileDetailRow(
+              label: 'Name',
+              value: _profileValue(head.fullName),
+            ),
+            _ProfileDetailRow(label: 'Email', value: _profileValue(head.email)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamMembersSheet extends StatelessWidget {
+  const _TeamMembersSheet({required this.department});
+
+  final ProfileDepartment department;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      heightFactor: 0.75,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Text(
+              department.name == null
+                  ? 'Team members'
+                  : 'Team members • ${department.name}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          Expanded(
+            child: department.colleagues.isEmpty
+                ? const Center(child: Text('No team members are listed.'))
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                    itemCount: department.colleagues.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final person = department.colleagues[index];
+                      final roleNames = person.roles
+                          .map((role) => role.name)
+                          .whereType<String>()
+                          .where((role) => role.isNotEmpty)
+                          .join(', ');
+                      final contactDetails = [
+                        if (person.email?.isNotEmpty == true) person.email,
+                        if (roleNames.isNotEmpty) roleNames,
+                      ].join(' • ');
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person_outline_rounded),
+                        ),
+                        title: Text(_profileValue(person.fullName)),
+                        subtitle: Text(
+                          contactDetails.isEmpty
+                              ? 'Contact details unavailable'
+                              : contactDetails,
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileDetailRow extends StatelessWidget {
+  const _ProfileDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+}
+
+String _profileValue(String? value) =>
+    value?.trim().isNotEmpty == true ? value!.trim() : 'Not provided';
 
 class _ProfileAvatar extends StatelessWidget {
   const _ProfileAvatar({
