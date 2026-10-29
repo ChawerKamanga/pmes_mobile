@@ -14,46 +14,167 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test(
-    'uploads with UUID idempotency and marks a successful record synced',
-    () async {
-      final fixture = await _createFixture();
-      addTearDown(fixture.dispose);
-      final log = await fixture.repository.writeFieldLog(
+  test('sends batch payload and marks a successful record synced', () async {
+    final fixture = await _createFixture();
+    addTearDown(fixture.dispose);
+    final log = await fixture.repository.writeFieldLog(
+      projectId: 'project-1',
+      kpisMet: '2 of 5',
+      notes: 'Work is progressing.',
+      gpsLatitude: -15.4,
+      gpsLongitude: 28.2,
+      timestamp: DateTime.utc(2026, 10, 29, 12),
+    );
+    late final http.Request sentRequest;
+
+    final service = SyncService(
+      repository: fixture.repository,
+      client: MockClient((request) async {
+        sentRequest = request;
+        return http.Response(
+          jsonEncode({
+            'message': 'Sync completed successfully.',
+            'synced_items': [
+              {
+                'local_id': log.localId,
+                'server_id': 'server-1',
+                'status': 'success',
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+    addTearDown(service.dispose);
+
+    final finished = _whenSyncFinishes(service);
+    service.updateDependencies(isOnline: true, token: 'test-token');
+    await finished;
+
+    expect(sentRequest.url.toString(), ApiConstants.syncBatch);
+    expect(sentRequest.headers['authorization'], 'Bearer test-token');
+    expect(jsonDecode(sentRequest.body), {
+      'items': [
+        [
+          log.localId,
+          'project-1',
+          '2 of 5',
+          'Work is progressing.',
+          '-15.4',
+          '28.2',
+          '2026-10-29T12:00:00.000Z',
+        ],
+      ],
+    });
+    expect(await fixture.repository.getPendingFieldLogs(), isEmpty);
+    expect(service.completedCount, 1);
+    expect(service.failedCount, 0);
+  });
+
+  test('sends batches of at most 100 records', () async {
+    final fixture = await _createFixture();
+    addTearDown(fixture.dispose);
+    for (var index = 0; index < 101; index++) {
+      await fixture.repository.writeFieldLog(
         projectId: 'project-1',
-        kpisMet: '2 of 5',
-        notes: 'Work is progressing.',
-        gpsLatitude: -15.4,
-        gpsLongitude: 28.2,
-        timestamp: DateTime.utc(2026, 10, 29, 12),
+        kpisMet: '$index',
+        notes: 'Log $index',
       );
-      late final http.Request sentRequest;
+    }
 
-      final service = SyncService(
-        repository: fixture.repository,
-        client: MockClient((request) async {
-          sentRequest = request;
-          return http.Response('{}', 201);
-        }),
-      );
-      addTearDown(service.dispose);
+    final batchSizes = <int>[];
+    final service = SyncService(
+      repository: fixture.repository,
+      client: MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final items = body['items'] as List<dynamic>;
+        batchSizes.add(items.length);
+        return http.Response(
+          jsonEncode({
+            'message': 'Sync completed successfully.',
+            'synced_items': items
+                .map(
+                  (item) => {
+                    'local_id': (item as List<dynamic>).first,
+                    'server_id': 'server-id',
+                    'status': 'success',
+                  },
+                )
+                .toList(),
+          }),
+          200,
+        );
+      }),
+    );
+    addTearDown(service.dispose);
 
-      final finished = _whenSyncFinishes(service);
-      service.updateDependencies(isOnline: true, token: 'test-token');
-      await finished;
+    final finished = _whenSyncFinishes(service);
+    service.updateDependencies(isOnline: true, token: 'test-token');
+    await finished;
 
-      expect(sentRequest.url.toString(), ApiConstants.fieldUpdatesSync);
-      expect(sentRequest.headers['authorization'], 'Bearer test-token');
-      expect(sentRequest.headers['idempotency-key'], log.localId);
-      expect(
-        jsonDecode(sentRequest.body),
-        containsPair('local_id', log.localId),
-      );
-      expect(await fixture.repository.getPendingFieldLogs(), isEmpty);
-      expect(service.completedCount, 1);
-      expect(service.failedCount, 0);
-    },
-  );
+    expect(batchSizes, [100, 1]);
+    expect(await fixture.repository.getPendingFieldLogs(), isEmpty);
+    expect(service.completedCount, 101);
+    expect(service.failedCount, 0);
+  });
+
+  test('retains per-item errors from a partially successful batch', () async {
+    final fixture = await _createFixture();
+    addTearDown(fixture.dispose);
+    final successfulLog = await fixture.repository.writeFieldLog(
+      projectId: 'project-1',
+      kpisMet: '2 of 5',
+      notes: 'Successful log.',
+    );
+    final failedLog = await fixture.repository.writeFieldLog(
+      projectId: 'project-2',
+      kpisMet: '1 of 3',
+      notes: 'Failed log.',
+    );
+    late final http.Request sentRequest;
+    final service = SyncService(
+      repository: fixture.repository,
+      client: MockClient((request) async {
+        sentRequest = request;
+        return http.Response(
+          jsonEncode({
+            'message': 'Sync completed with errors.',
+            'synced_items': [
+              {'local_id': successfulLog.localId, 'status': 'success'},
+              {
+                'local_id': failedLog.localId,
+                'status': 'error',
+                'message': 'Invalid project.',
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+    addTearDown(service.dispose);
+
+    final finished = _whenSyncFinishes(service);
+    service.updateDependencies(isOnline: true, token: 'test-token');
+    await finished;
+
+    final requestBody = jsonDecode(sentRequest.body) as Map<String, dynamic>;
+    final items = requestBody['items'] as List<dynamic>;
+    final failedItem = items.cast<List<dynamic>>().singleWhere(
+      (item) => item.first == failedLog.localId,
+    );
+    expect(failedItem, everyElement(isA<String>()));
+    expect(failedItem[4], '');
+    expect(failedItem[5], '');
+
+    final pending = await fixture.repository.getPendingFieldLogs();
+    expect(pending, hasLength(1));
+    expect(pending.single.localId, failedLog.localId);
+    expect(pending.single.lastSyncError, 'Invalid project.');
+    expect(service.completedCount, 1);
+    expect(service.failedCount, 1);
+  });
 
   test(
     'retains failed uploads and persists the server error for retry',

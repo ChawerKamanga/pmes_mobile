@@ -30,6 +30,7 @@ class SyncService extends ChangeNotifier {
       _ownsClient = client == null;
 
   static const Duration _requestTimeout = Duration(seconds: 30);
+  static const int _batchSize = 100;
 
   final FieldLogRepository repository;
   final http.Client _client;
@@ -96,40 +97,62 @@ class SyncService extends ChangeNotifier {
       _totalCount = pendingLogs.length;
       notifyListeners();
 
-      for (final log in pendingLogs) {
+      for (var start = 0; start < pendingLogs.length; start += _batchSize) {
         if (!_isOnline) {
           _lastError = 'Connection lost. Remaining records are still queued.';
           break;
         }
         if (_token != token) {
-          _lastError = 'Your session changed. Sign in again before syncing remaining records.';
+          _lastError =
+              'Your session changed. Sign in again before syncing remaining records.';
           break;
         }
-        _currentLocalId = log.localId;
+
+        final batch = pendingLogs
+            .skip(start)
+            .take(_batchSize)
+            .toList(growable: false);
+        _currentLocalId = batch.first.localId;
         notifyListeners();
 
+        Map<String, String?> outcomes;
+        var stopAfterBatch = false;
         try {
-          await repository.recordFieldLogSyncAttempt(log.localId);
-          await _uploadFieldLog(log, token);
-          await repository.markFieldLogSynced(log.localId);
-          _completedCount++;
+          for (final log in batch) {
+            await repository.recordFieldLogSyncAttempt(log.localId);
+          }
+          outcomes = await _uploadFieldLogs(batch, token);
         } on Object catch (error) {
           final message = _errorMessage(error);
-          _failedCount++;
+          outcomes = {for (final log in batch) log.localId: message};
+          stopAfterBatch = error is SyncUploadException && error.isTransient;
+        }
+
+        for (final log in batch) {
+          _currentLocalId = log.localId;
+          final error = outcomes[log.localId];
           try {
-            await repository.recordFieldLogSyncFailure(log.localId, message);
+            if (error == null) {
+              await repository.markFieldLogSynced(log.localId);
+              _completedCount++;
+            } else {
+              await repository.recordFieldLogSyncFailure(log.localId, error);
+              _failedCount++;
+              _lastError ??= error;
+            }
           } on Object catch (storageError) {
+            stopAfterBatch = true;
             _lastError =
-                '$message Local error could not be saved: ${_errorMessage(storageError)}';
+                'Unable to save the sync result for ${log.localId}: '
+                '${_errorMessage(storageError)}';
             debugPrint(
-              'Unable to save sync failure for ${log.localId}: $storageError',
+              'Unable to save sync result for ${log.localId}: $storageError',
             );
             break;
           }
-          _lastError = message;
-          if (error is SyncUploadException && error.isTransient) break;
+          notifyListeners();
         }
-        notifyListeners();
+        if (stopAfterBatch) break;
       }
     } on Object catch (error) {
       _lastError =
@@ -148,57 +171,109 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  Future<void> _uploadFieldLog(FieldProgressLog log, String token) async {
+  Future<Map<String, String?>> _uploadFieldLogs(
+    List<FieldProgressLog> logs,
+    String token,
+  ) async {
     late final http.Response response;
     try {
       response = await _client
           .post(
-            Uri.parse(ApiConstants.fieldUpdatesSync),
+            Uri.parse(ApiConstants.syncBatch),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
-              'Idempotency-Key': log.localId,
             },
             body: jsonEncode({
-              'local_id': log.localId,
-              'project_id': log.projectId,
-              'kpis_met': log.kpisMet,
-              'notes': log.notes,
-              'gps_lat': log.gpsLatitude,
-              'gps_lng': log.gpsLongitude,
-              'timestamp': log.timestamp.toUtc().toIso8601String(),
+              'items': logs
+                  .map(
+                    (log) => [
+                      log.localId,
+                      log.projectId,
+                      log.kpisMet,
+                      log.notes,
+                      log.gpsLatitude?.toString() ?? '',
+                      log.gpsLongitude?.toString() ?? '',
+                      log.timestamp.toUtc().toIso8601String(),
+                    ],
+                  )
+                  .toList(growable: false),
             }),
           )
           .timeout(_requestTimeout);
     } on TimeoutException {
       throw const SyncUploadException(
-        'The server took too long to respond. The record will retry.',
+        'The server took too long to respond. The records will retry.',
         isTransient: true,
       );
     } on SocketException {
       throw const SyncUploadException(
-        'Unable to reach the server. The record will retry.',
+        'Unable to reach the server. The records will retry.',
         isTransient: true,
       );
     } on http.ClientException {
       throw const SyncUploadException(
-        'Unable to reach the server. The record will retry.',
+        'Unable to reach the server. The records will retry.',
         isTransient: true,
       );
     }
 
-    if (response.statusCode == 200 || response.statusCode == 201) return;
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw SyncUploadException(
+        _responseMessage(response),
+        statusCode: response.statusCode,
+        isTransient:
+            response.statusCode == 408 ||
+            response.statusCode == 429 ||
+            response.statusCode >= 500,
+      );
+    }
 
-    final message = _responseMessage(response);
-    throw SyncUploadException(
-      message,
-      statusCode: response.statusCode,
-      isTransient:
-          response.statusCode == 408 ||
-          response.statusCode == 429 ||
-          response.statusCode >= 500,
-    );
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException {
+      throw const SyncUploadException(
+        'The server returned an invalid sync response.',
+      );
+    }
+    if (decoded is! Map<String, dynamic> || decoded['synced_items'] is! List) {
+      throw const SyncUploadException(
+        'The server returned an invalid sync response.',
+      );
+    }
+
+    final syncedItems = decoded['synced_items'] as List<dynamic>;
+    final outcomes = <String, String?>{};
+    for (final log in logs) {
+      final matches = syncedItems
+          .where(
+            (item) =>
+                item is Map<String, dynamic> &&
+                item['local_id'] == log.localId,
+          )
+          .toList(growable: false);
+      if (matches.length != 1) {
+        outcomes[log.localId] = matches.isEmpty
+            ? 'The server did not return a sync result for this record.'
+            : 'The server returned duplicate sync results for this record.';
+        continue;
+      }
+
+      final result = matches.single as Map<String, dynamic>;
+      if (result['status'] == 'success') {
+        outcomes[log.localId] = null;
+      } else {
+        final itemMessage = result['message'] ?? result['error'];
+        final status = result['status'];
+        outcomes[log.localId] = itemMessage is String && itemMessage.isNotEmpty
+            ? itemMessage
+            : 'The server reported a sync failure'
+                  '${status is String && status.isNotEmpty ? ' ($status)' : ''}.';
+      }
+    }
+    return outcomes;
   }
 
   String _responseMessage(http.Response response) {

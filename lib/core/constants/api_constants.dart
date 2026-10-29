@@ -11,7 +11,7 @@ class ApiConstants {
 
   static const String dashboardOverview = '$baseUrl/dashboard/overview';
 
-  static const String fieldUpdatesSync = '$baseUrl/field-updates/sync';
+  static const String syncBatch = '$baseUrl/sync/batch';
 
   static const String userProfile = '$baseUrl/me/profile';
 

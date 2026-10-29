@@ -23,9 +23,11 @@ database (`pmes_mobile.db`). `FieldLogRepository.writeFieldLog` writes new logs
 with a generated UUID and `is_synced = 0`; `getPendingFieldLogs` returns the
 pending queue, including the cached project title and any previous sync error.
 `ConnectivityProvider` monitors network transport and internet access, while
-`SyncService` uploads pending field updates sequentially to
-`/api/v1/field-updates/sync` when online and authenticated. Each request includes
-the record UUID as both `local_id` and the `Idempotency-Key` header. Records are
-marked synced only after an HTTP 200 or 201 response; failed updates remain
-queued with a persisted error and retry automatically after the next connection
-cycle or manually from the Sync Queue screen.
+`SyncService` uploads pending field updates in batches of up to 100 to
+`/api/v1/sync/batch` when online and authenticated. Each item contains the
+record UUID, project ID, KPIs met, notes, GPS latitude, GPS longitude, and UTC
+timestamp as strings; missing GPS values are sent as empty strings. Records are
+marked synced only when the server returns a successful result for their local
+UUID. Failed or missing item results remain queued with a persisted error and
+retry automatically after the next connection cycle or manually from the Sync
+Queue screen.
