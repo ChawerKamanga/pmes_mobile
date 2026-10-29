@@ -11,6 +11,7 @@ import '../core/services/session_provider.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_page.dart';
 import 'appearance_settings_page.dart';
+import 'sync_queue_page.dart';
 import '../widgets/home/assigned_project_card.dart';
 import '../widgets/home/assigned_projects_header.dart';
 import '../widgets/home/custom_bottom_nav_bar.dart';
@@ -166,14 +167,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onDestinationSelected(int index) {
-    if (index == 2) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('Sync Queue is not available yet.')),
-        );
-      return;
-    }
     setState(() {
       _selectedTab = index;
       _isAppearanceOpen = false;
@@ -241,6 +234,10 @@ class _HomePageState extends State<HomePage> {
         onAppearance: () => setState(() => _isAppearanceOpen = true),
         onProfileNameChanged: session.updateUserName,
       );
+    }
+
+    if (_selectedTab == 2) {
+      return const SyncQueuePage();
     }
 
     if (_isInitialLoading) {
