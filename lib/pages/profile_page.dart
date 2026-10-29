@@ -23,7 +23,7 @@ class ProfilePage extends StatefulWidget {
     this.token,
     this.lastLogin,
     this.onAppearance,
-    this.onProfileNameChanged,
+    this.onProfileUpdated,
     this.profileService = const UserProfileService(),
     super.key,
   });
@@ -35,7 +35,7 @@ class ProfilePage extends StatefulWidget {
   final String? token;
   final DateTime? lastLogin;
   final VoidCallback? onAppearance;
-  final Future<void> Function(String)? onProfileNameChanged;
+  final Future<void> Function(ProfileUser)? onProfileUpdated;
   final UserProfileService profileService;
 
   @override
@@ -51,6 +51,12 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _profileError;
   ProfileUser? _profile;
   int _profileRequestId = 0;
+
+  Future<void> _handleProfileUpdated(ProfileUser updatedProfile) async {
+    if (!mounted) return;
+    setState(() => _profile = updatedProfile);
+    await widget.onProfileUpdated?.call(updatedProfile);
+  }
 
   @override
   void initState() {
@@ -196,6 +202,28 @@ class _ProfilePageState extends State<ProfilePage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openBasicInformation({
+    required String name,
+    required String email,
+    required String departmentName,
+    required ProfileDepartment? department,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BasicInformationPage(
+          userName: name,
+          userEmail: _profile?.email ?? email,
+          profilePhotoPath: _profilePhotoPath,
+          token: widget.token,
+          profileService: widget.profileService,
+          onProfileUpdated: _handleProfileUpdated,
+          organization: departmentName,
+          department: department?.code ?? departmentName,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileName = _profile?.displayName;
@@ -233,9 +261,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 ? roleDescription
                 : _profile?.accountStatus ?? 'PMES Account',
             profilePhotoPath: _profilePhotoPath,
-            onEdit: () => _showUnavailableFeature(
-              context,
-              'Profile editing is not available yet.',
+            onEdit: () => _openBasicInformation(
+              name: name,
+              email: email,
+              departmentName: departmentName,
+              department: department,
             ),
             onChangePhoto: _isPickingPhoto ? null : _chooseProfilePhoto,
           ),
@@ -255,17 +285,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: Icons.person_outline_rounded,
                 title: 'Basic Information',
                 description: 'Name, email, phone, location',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BasicInformationPage(
-                      userName: name,
-                      userEmail: email,
-                      profilePhotoPath: _profilePhotoPath,
-                      onNameChanged: widget.onProfileNameChanged,
-                      organization: departmentName,
-                      department: department?.code ?? departmentName,
-                    ),
-                  ),
+                onTap: () => _openBasicInformation(
+                  name: name,
+                  email: email,
+                  departmentName: departmentName,
+                  department: department,
                 ),
               ),
               _ProfileMenuTileData(
@@ -276,8 +300,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   MaterialPageRoute<void>(
                     builder: (_) => AccountSecurityPage(
                       userName: name,
-                      userEmail: email,
+                      userEmail: _profile?.email ?? widget.userEmail,
                       lastLogin: lastLogin,
+                      firstName: _profile?.firstName,
+                      lastName: _profile?.lastName,
+                      token: widget.token,
+                      profileService: widget.profileService,
+                      onProfileUpdated: (updatedProfile) {
+                        setState(() => _profile = updatedProfile);
+                      },
                     ),
                   ),
                 ),

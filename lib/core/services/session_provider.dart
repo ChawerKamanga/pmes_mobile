@@ -59,4 +59,12 @@ class SessionProvider extends ChangeNotifier {
     _userName = userName;
     notifyListeners();
   }
+
+  Future<void> updateUserProfile(String userName, String userEmail) async {
+    await SessionStorage.saveUserName(userName);
+    await SessionStorage.saveUserEmail(userEmail);
+    _userName = userName;
+    _userEmail = userEmail;
+    notifyListeners();
+  }
 }

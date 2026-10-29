@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/models/user_profile.dart';
+import '../core/services/api_exception.dart';
+import '../core/services/user_profile_service.dart';
 import '../core/theme/app_colors.dart';
 
 class AccountSecurityPage extends StatefulWidget {
@@ -7,12 +10,22 @@ class AccountSecurityPage extends StatefulWidget {
     required this.userName,
     required this.userEmail,
     required this.lastLogin,
+    this.firstName,
+    this.lastName,
+    this.token,
+    this.profileService = const UserProfileService(),
+    this.onProfileUpdated,
     super.key,
   });
 
   final String? userName;
   final String? userEmail;
   final DateTime? lastLogin;
+  final String? firstName;
+  final String? lastName;
+  final String? token;
+  final UserProfileService profileService;
+  final ValueChanged<ProfileUser>? onProfileUpdated;
 
   @override
   State<AccountSecurityPage> createState() => _AccountSecurityPageState();
@@ -33,7 +46,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -71,7 +83,15 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                   lastLogin: _formatLastLogin(context),
                 ),
                 const SizedBox(height: 16),
-                const _ChangePasswordCard(),
+                _ChangePasswordCard(
+                  displayName: widget.userName,
+                  firstName: widget.firstName,
+                  lastName: widget.lastName,
+                  email: widget.userEmail,
+                  token: widget.token,
+                  profileService: widget.profileService,
+                  onProfileUpdated: widget.onProfileUpdated,
+                ),
                 const SizedBox(height: 16),
                 const _UnavailableSecurityCard(
                   title: 'Recent Login Activity',
@@ -89,7 +109,23 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
 }
 
 class _ChangePasswordCard extends StatefulWidget {
-  const _ChangePasswordCard();
+  const _ChangePasswordCard({
+    required this.displayName,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.token,
+    required this.profileService,
+    required this.onProfileUpdated,
+  });
+
+  final String? displayName;
+  final String? firstName;
+  final String? lastName;
+  final String? email;
+  final String? token;
+  final UserProfileService profileService;
+  final ValueChanged<ProfileUser>? onProfileUpdated;
 
   @override
   State<_ChangePasswordCard> createState() => _ChangePasswordCardState();
@@ -101,6 +137,7 @@ class _ChangePasswordCardState extends State<_ChangePasswordCard> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _obscurePassword = [true, true, true];
+  bool _isUpdating = false;
 
   @override
   void dispose() {
@@ -124,18 +161,55 @@ class _ChangePasswordCardState extends State<_ChangePasswordCard> {
   String? _requiredPassword(String? value) =>
       value == null || value.isEmpty ? 'Enter your password.' : null;
 
-  void _updatePassword() {
+  Future<void> _updatePassword() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    final token = widget.token;
+    if (token == null || token.isEmpty) {
+      _showMessage('Your session has expired. Please sign in again.');
+      return;
+    }
+
+    final nameParts = widget.displayName?.trim().split(RegExp(r'\s+')) ?? [];
+    final firstName = widget.firstName?.trim().isNotEmpty == true
+        ? widget.firstName!.trim()
+        : nameParts.isEmpty
+        ? ''
+        : nameParts.first;
+    final lastName =
+        widget.lastName?.trim() ??
+        (nameParts.length < 2 ? '' : nameParts.skip(1).join(' '));
+    final email = widget.email?.trim() ?? '';
+    if (email.isEmpty || email == 'Email unavailable' || firstName.isEmpty) {
+      _showMessage('Unable to update your password without profile details.');
+      return;
+    }
+
+    setState(() => _isUpdating = true);
+    try {
+      final response = await widget.profileService.updateProfile(
+        token: token,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        currentPassword: _currentPasswordController.text,
+        password: _newPasswordController.text,
+        passwordConfirmation: _confirmPasswordController.text,
+      );
+      if (!mounted) return;
+      widget.onProfileUpdated?.call(response.user);
+      _cancel();
+      _showMessage('Your password has been updated.');
+    } on ApiException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Password updates are unavailable because this service does not '
-            'currently support changing passwords.',
-          ),
-        ),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -143,7 +217,7 @@ class _ChangePasswordCardState extends State<_ChangePasswordCard> {
     return _SecurityCard(
       title: 'Change Password',
       icon: Icons.lock_outline_rounded,
-      badge: 'Unavailable',
+      badge: _isUpdating ? 'Updating' : 'Available',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -220,8 +294,9 @@ class _ChangePasswordCardState extends State<_ChangePasswordCard> {
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(
-                          'Password updates are unavailable because this '
-                          'service does not currently support changing passwords.',
+                          'Your current password is required to confirm this '
+                          'change. Your passwords are sent securely and are '
+                          'never saved on this device.',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface
                                 .withValues(alpha: 0.72),
@@ -239,11 +314,13 @@ class _ChangePasswordCardState extends State<_ChangePasswordCard> {
                   runSpacing: 8,
                   children: [
                     FilledButton(
-                      onPressed: _updatePassword,
-                      child: const Text('Update Password'),
+                      onPressed: _isUpdating ? null : _updatePassword,
+                      child: Text(
+                        _isUpdating ? 'Updating...' : 'Update Password',
+                      ),
                     ),
                     OutlinedButton(
-                      onPressed: _cancel,
+                      onPressed: _isUpdating ? null : _cancel,
                       child: const Text('Cancel'),
                     ),
                   ],

@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/models/user_profile.dart';
+import '../core/services/api_exception.dart';
+import '../core/services/user_profile_service.dart';
 import '../core/theme/app_colors.dart';
 
 class BasicInformationPage extends StatefulWidget {
@@ -11,7 +12,9 @@ class BasicInformationPage extends StatefulWidget {
     required this.userName,
     required this.userEmail,
     this.profilePhotoPath,
-    this.onNameChanged,
+    this.onProfileUpdated,
+    this.token,
+    this.profileService = const UserProfileService(),
     this.organization,
     this.department,
     super.key,
@@ -20,7 +23,9 @@ class BasicInformationPage extends StatefulWidget {
   final String? userName;
   final String? userEmail;
   final String? profilePhotoPath;
-  final Future<void> Function(String)? onNameChanged;
+  final Future<void> Function(ProfileUser)? onProfileUpdated;
+  final String? token;
+  final UserProfileService profileService;
   final String? organization;
   final String? department;
 
@@ -29,29 +34,14 @@ class BasicInformationPage extends StatefulWidget {
 }
 
 class _BasicInformationPageState extends State<BasicInformationPage> {
-  static const _keys = {
-    'name': 'basic_information_name',
-    'phone': 'basic_information_phone',
-    'dateOfBirth': 'basic_information_date_of_birth',
-    'gender': 'basic_information_gender',
-    'nationality': 'basic_information_nationality',
-    'country': 'basic_information_country',
-    'city': 'basic_information_city',
-    'address': 'basic_information_address',
-  };
-
   late _BasicInformationData _details;
-  bool _isLoading = true;
   bool _isSaving = false;
 
-  String get _email => widget.userEmail?.trim().isNotEmpty == true
+  String get _email => _details.email.trim().isNotEmpty
+      ? _details.email.trim()
+      : widget.userEmail?.trim().isNotEmpty == true
       ? widget.userEmail!.trim()
       : 'Email unavailable';
-
-  String _preferenceKey(String field) {
-    final email = widget.userEmail!.trim().toLowerCase();
-    return '${_keys[field]!}_${Uri.encodeComponent(email)}';
-  }
 
   String get _name {
     final name = _details.name.trim();
@@ -61,30 +51,10 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
   @override
   void initState() {
     super.initState();
-    _details = _BasicInformationData(name: widget.userName?.trim() ?? '');
-    _loadDetails();
-  }
-
-  Future<void> _loadDetails() async {
-    try {
-      if (widget.userEmail?.trim().isNotEmpty != true) return;
-      final preferences = await SharedPreferences.getInstance();
-      final loaded = _BasicInformationData(
-        name: preferences.getString(_preferenceKey('name')) ?? _details.name,
-        phone: preferences.getString(_preferenceKey('phone')) ?? '',
-        dateOfBirth: preferences.getString(_preferenceKey('dateOfBirth')) ?? '',
-        gender: preferences.getString(_preferenceKey('gender')) ?? '',
-        nationality: preferences.getString(_preferenceKey('nationality')) ?? '',
-        country: preferences.getString(_preferenceKey('country')) ?? '',
-        city: preferences.getString(_preferenceKey('city')) ?? '',
-        address: preferences.getString(_preferenceKey('address')) ?? '',
-      );
-      if (mounted) setState(() => _details = loaded);
-    } on Exception {
-      if (mounted) _showMessage('Unable to load saved profile details.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    _details = _BasicInformationData(
+      name: widget.userName?.trim() ?? '',
+      email: widget.userEmail?.trim() ?? '',
+    );
   }
 
   Future<void> _editDetails() async {
@@ -98,43 +68,43 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
 
     setState(() => _isSaving = true);
     try {
-      if (widget.userEmail?.trim().isNotEmpty != true) {
-        _showMessage('Unable to save details without an account email.');
+      final token = widget.token;
+      if (token == null || token.isEmpty) {
+        _showMessage('Your session has expired. Please sign in again.');
         return;
       }
-      final preferences = await SharedPreferences.getInstance();
-      final values = <String, String>{
-        'name': updated.name,
-        'phone': updated.phone,
-        'dateOfBirth': updated.dateOfBirth,
-        'gender': updated.gender,
-        'nationality': updated.nationality,
-        'country': updated.country,
-        'city': updated.city,
-        'address': updated.address,
-      };
-      for (final entry in values.entries) {
-        final saved = await preferences.setString(
-          _preferenceKey(entry.key),
-          entry.value,
-        );
-        if (!saved) throw Exception('Unable to save profile details.');
-      }
-      if (!mounted) return;
-      setState(() => _details = updated);
-      try {
-        await widget.onNameChanged?.call(updated.name);
-      } on Exception {
-        if (mounted) {
-          _showMessage(
-            'Profile details were saved, but the account name could not be updated.',
-          );
-        }
+      final nameParts = updated.name.trim().split(RegExp(r'\s+'));
+      if (nameParts.length < 2) {
+        _showMessage('Enter your first and last name.');
         return;
       }
-      _showMessage('Your personal details have been saved on this device.');
+      final firstName = nameParts.first;
+      final lastName = nameParts.skip(1).join(' ');
+      final email = updated.email.trim();
+
+      final response = await widget.profileService.updateProfile(
+        token: token,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+      );
+      final savedName = response.user.displayName ?? updated.name;
+      final savedEmail = response.user.email ?? email;
+      final savedDetails = _BasicInformationData(
+        name: savedName,
+        email: savedEmail,
+      );
+      if (mounted) setState(() => _details = savedDetails);
+      await widget.onProfileUpdated?.call(response.user);
+      if (mounted) _showMessage('Your profile has been updated.');
+    } on ApiException catch (error) {
+      if (mounted) _showMessage(error.message);
     } on Exception {
-      if (mounted) _showMessage('Unable to save your profile details.');
+      if (mounted) {
+        _showMessage(
+          'Profile updated, but the local session could not refresh.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -172,67 +142,45 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
       ),
       body: SafeArea(
         top: false,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : LayoutBuilder(
-                builder: (context, _) => Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
-                      children: [
-                        const SizedBox(height: 20),
-                        _ProfileSummaryCard(
-                          name: _name,
-                          email: _email,
-                          organization: _value(widget.organization ?? ''),
-                          department: _value(widget.department ?? ''),
-                          photoPath: widget.profilePhotoPath,
-                          isSaving: _isSaving,
-                          onEdit: _isSaving ? null : _editDetails,
-                        ),
-                        const SizedBox(height: 16),
-                        _InformationCard(
-                          title: 'PERSONAL DETAILS',
-                          rows: [
-                            _InformationRowData(
-                              Icons.person_outline_rounded,
-                              'Full Name',
-                              _name,
-                            ),
-                            _InformationRowData(
-                              Icons.mail_outline_rounded,
-                              'Email Address',
-                              _email,
-                            ),
-                            _InformationRowData(
-                              Icons.phone_outlined,
-                              'Phone Number',
-                              _value(_details.phone),
-                            ),
-                            _InformationRowData(
-                              Icons.cake_outlined,
-                              'Date of Birth',
-                              _value(_details.dateOfBirth),
-                            ),
-                            _InformationRowData(
-                              Icons.wc_rounded,
-                              'Gender',
-                              _value(_details.gender),
-                            ),
-                            _InformationRowData(
-                              Icons.flag_outlined,
-                              'Nationality',
-                              _value(_details.nationality),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
+        child: LayoutBuilder(
+          builder: (context, _) => Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
+                children: [
+                  const SizedBox(height: 20),
+                  _ProfileSummaryCard(
+                    name: _name,
+                    email: _email,
+                    organization: _value(widget.organization ?? ''),
+                    department: _value(widget.department ?? ''),
+                    photoPath: widget.profilePhotoPath,
+                    isSaving: _isSaving,
+                    onEdit: _isSaving ? null : _editDetails,
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  _InformationCard(
+                    title: 'PERSONAL DETAILS',
+                    rows: [
+                      _InformationRowData(
+                        Icons.person_outline_rounded,
+                        'Full Name',
+                        _name,
+                      ),
+                      _InformationRowData(
+                        Icons.mail_outline_rounded,
+                        'Email Address',
+                        _email,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -241,25 +189,10 @@ class _BasicInformationPageState extends State<BasicInformationPage> {
 }
 
 class _BasicInformationData {
-  const _BasicInformationData({
-    this.name = '',
-    this.phone = '',
-    this.dateOfBirth = '',
-    this.gender = '',
-    this.nationality = '',
-    this.country = '',
-    this.city = '',
-    this.address = '',
-  });
+  const _BasicInformationData({this.name = '', this.email = ''});
 
   final String name;
-  final String phone;
-  final String dateOfBirth;
-  final String gender;
-  final String nationality;
-  final String country;
-  final String city;
-  final String address;
+  final String email;
 }
 
 class _ProfileSummaryCard extends StatelessWidget {
@@ -384,12 +317,11 @@ class _ProfileSummaryCard extends StatelessWidget {
 }
 
 class _InformationRowData {
-  const _InformationRowData(this.icon, this.label, this.value, {this.onTap});
+  const _InformationRowData(this.icon, this.label, this.value);
 
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback? onTap;
 }
 
 class _InformationCard extends StatelessWidget {
@@ -444,7 +376,7 @@ class _InformationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.onSurface;
-    final child = Padding(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
@@ -476,21 +408,7 @@ class _InformationRow extends StatelessWidget {
               ],
             ),
           ),
-          if (data.onTap != null)
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.neutralLight,
-            ),
         ],
-      ),
-    );
-    if (data.onTap == null) return child;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: data.onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: child,
       ),
     );
   }
@@ -510,48 +428,15 @@ class _EditBasicInformationSheetState
     extends State<_EditBasicInformationSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.initial.name);
-  late final _phoneController = TextEditingController(
-    text: widget.initial.phone,
+  late final _emailController = TextEditingController(
+    text: widget.initial.email,
   );
-  late final _dobController = TextEditingController(
-    text: widget.initial.dateOfBirth,
-  );
-  late final _nationalityController = TextEditingController(
-    text: widget.initial.nationality,
-  );
-  late final _countryController = TextEditingController(
-    text: widget.initial.country,
-  );
-  late final _cityController = TextEditingController(text: widget.initial.city);
-  late final _addressController = TextEditingController(
-    text: widget.initial.address,
-  );
-  late String _gender = widget.initial.gender;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
-    _dobController.dispose();
-    _nationalityController.dispose();
-    _countryController.dispose();
-    _cityController.dispose();
-    _addressController.dispose();
+    _emailController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectDateOfBirth() async {
-    final initial = DateTime.tryParse(_dobController.text) ?? DateTime(1990);
-    final date = await showDatePicker(
-      context: context,
-      initialDate: initial.isAfter(DateTime.now()) ? DateTime.now() : initial,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (date != null) {
-      _dobController.text =
-          '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    }
   }
 
   void _save() {
@@ -559,21 +444,37 @@ class _EditBasicInformationSheetState
     Navigator.of(context).pop(
       _BasicInformationData(
         name: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        dateOfBirth: _dobController.text.trim(),
-        gender: _gender,
-        nationality: _nationalityController.text.trim(),
-        country: _countryController.text.trim(),
-        city: _cityController.text.trim(),
-        address: _addressController.text.trim(),
+        email: _emailController.text.trim(),
       ),
     );
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
-    labelText: label,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
+  InputDecoration _decoration(
+    String label,
+    IconData icon, {
+    Widget? suffixIcon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: colorScheme.outlineVariant),
+    );
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: colorScheme.onSurfaceVariant),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerHighest,
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.secondary, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      counterText: '',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -614,86 +515,43 @@ class _EditBasicInformationSheetState
                     TextFormField(
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: _decoration('Full name'),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'Enter your full name.'
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9+() -]'),
-                        ),
-                      ],
-                      decoration: _decoration('Phone number'),
+                      decoration: _decoration(
+                        'Full name',
+                        Icons.person_outline_rounded,
+                      ),
+                      maxLength: 511,
                       validator: (value) {
-                        final phone = value?.trim() ?? '';
-                        if (phone.isNotEmpty &&
-                            phone.replaceAll(RegExp(r'\D'), '').length < 7) {
-                          return 'Enter a valid phone number.';
+                        final name = value?.trim() ?? '';
+                        final parts = name.split(RegExp(r'\s+'));
+                        if (name.isEmpty || parts.length < 2) {
+                          return 'Enter your first and last name.';
+                        }
+                        if (parts.first.length > 255 ||
+                            parts.skip(1).join(' ').length > 255) {
+                          return 'First and last names must be 255 characters or fewer.';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
-                      controller: _dobController,
-                      readOnly: true,
-                      onTap: _selectDateOfBirth,
-                      decoration: _decoration('Date of birth').copyWith(
-                        suffixIcon: const Icon(Icons.calendar_today_outlined),
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: _decoration(
+                        'Email address',
+                        Icons.mail_outline_rounded,
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _gender.isEmpty ? null : _gender,
-                      decoration: _decoration('Gender'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'Female',
-                          child: Text('Female'),
-                        ),
-                        DropdownMenuItem(value: 'Male', child: Text('Male')),
-                        DropdownMenuItem(
-                          value: 'Non-binary',
-                          child: Text('Non-binary'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Prefer not to say',
-                          child: Text('Prefer not to say'),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _gender = value ?? ''),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _nationalityController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _decoration('Nationality'),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _countryController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _decoration('Country'),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _cityController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _decoration('City / Town'),
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _addressController,
-                      maxLines: 2,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: _decoration('Physical address'),
+                      maxLength: 255,
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (email.isEmpty) return 'Enter your email address.';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                            .hasMatch(email)) {
+                          return 'Enter a valid email address.';
+                        }
+                        return null;
+                      },
                     ),
                   ],
                 ),

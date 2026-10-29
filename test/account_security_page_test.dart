@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:pmes_mobile/core/services/user_profile_service.dart';
 import 'package:pmes_mobile/pages/account_security_page.dart';
 import 'package:pmes_mobile/pages/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,12 +81,45 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final service = UserProfileService(
+      client: MockClient((request) async {
+        expect(request.method, 'PUT');
+        expect(request.url.path, endsWith('/api/v1/me/profile'));
+        expect(request.headers['authorization'], 'Bearer test-token');
+        expect(jsonDecode(request.body), {
+          'first_name': 'Sam',
+          'last_name': 'Kamanga',
+          'email': 'sam@example.org',
+          'current_password': 'old-secret',
+          'password': 'new-secret',
+          'password_confirmation': 'new-secret',
+        });
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'data': {
+              'user': {
+                'first_name': 'Sam',
+                'last_name': 'Kamanga',
+                'full_name': 'Sam Kamanga',
+                'email': 'sam@example.org',
+              },
+            },
+          }),
+          200,
+        );
+      }),
+    );
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: AccountSecurityPage(
           userName: 'Sam Kamanga',
           userEmail: 'sam@example.org',
           lastLogin: null,
+          firstName: 'Sam',
+          lastName: 'Kamanga',
+          token: 'test-token',
+          profileService: service,
         ),
       ),
     );
@@ -127,13 +165,17 @@ void main() {
     await tester.enterText(fields.at(2), 'new-secret');
     await tester.tap(find.text('Update Password'));
     await tester.pumpAndSettle();
+    expect(find.text('Your password has been updated.'), findsOneWidget);
     expect(
-      find.text(
-        'Password updates are unavailable because this service does not '
-        'currently support changing passwords.',
-      ),
-      findsNWidgets(2),
+      find.textContaining('Password updates are unavailable'),
+      findsNothing,
     );
+    for (var index = 0; index < fields.evaluate().length; index++) {
+      expect(
+        tester.widget<TextFormField>(fields.at(index)).controller?.text,
+        isEmpty,
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 

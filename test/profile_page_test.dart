@@ -132,6 +132,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('profile edit action opens the Basic Information page', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProfilePage(
+            userName: 'Sam Kamanga',
+            userEmail: 'sam@example.org',
+            overview: null,
+            onLogout: _ignoreLogout,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Edit profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Basic Information'), findsOneWidget);
+    expect(find.text('Sam Kamanga'), findsWidgets);
+    expect(find.text('sam@example.org'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('lays out the profile on a wide screen without overflow', (
     tester,
   ) async {
@@ -182,27 +208,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Basic Information'), findsOneWidget);
-    expect(find.text('Your personal and account details.'), findsOneWidget);
     expect(find.text('sam@example.org').last, findsOneWidget);
     expect(find.text('Sam Kamanga').last, findsOneWidget);
     expect(find.text('PERSONAL DETAILS'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('LOCATION'),
-      300,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('LOCATION'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('ACCOUNT SECURITY'),
-      300,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('ACCOUNT SECURITY'), findsOneWidget);
-    expect(find.text('••••••••'), findsOneWidget);
-    await tester.tap(find.text('••••••••'));
+    for (final unsupportedField in [
+      'Phone Number',
+      'Date of Birth',
+      'Gender',
+      'Nationality',
+      'Phone number',
+      'Country',
+      'City / Town',
+      'Physical address',
+    ]) {
+      expect(find.text(unsupportedField), findsNothing);
+    }
+
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
-    expect(find.text('Password').last, findsOneWidget);
-    await tester.tap(find.text('Close'));
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
@@ -211,14 +236,62 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    final service = UserProfileService(
+      client: MockClient((request) async {
+        expect(request.headers['authorization'], 'Bearer profile-token');
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'data': {
+                'user': {
+                  'first_name': 'Sam',
+                  'last_name': 'Kamanga',
+                  'full_name': 'Sam Kamanga',
+                  'email': 'sam@example.org',
+                },
+              },
+            }),
+            200,
+          );
+        }
+
+        expect(request.method, 'PUT');
+        expect(request.url.path, endsWith('/api/v1/me/profile'));
+        expect(jsonDecode(request.body), {
+          'first_name': 'Taylor',
+          'last_name': 'Kamanga',
+          'email': 'taylor@example.org',
+          'current_password': null,
+          'password': null,
+          'password_confirmation': null,
+        });
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'data': {
+              'user': {
+                'first_name': 'Taylor',
+                'last_name': 'Kamanga',
+                'full_name': 'Taylor Kamanga',
+                'email': 'taylor@example.org',
+              },
+            },
+          }),
+          200,
+        );
+      }),
+    );
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: ProfilePage(
+            token: 'profile-token',
             userName: 'Sam Kamanga',
             userEmail: 'sam@example.org',
             overview: null,
             onLogout: _ignoreLogout,
+            profileService: service,
           ),
         ),
       ),
@@ -229,21 +302,44 @@ void main() {
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
 
+    final nameInput = tester.widget<InputDecorator>(
+      find.byType(InputDecorator).first,
+    );
+    expect(nameInput.decoration.filled, isTrue);
+    expect(
+      nameInput.decoration.prefixIcon,
+      isA<Icon>().having(
+        (icon) => icon.icon,
+        'icon',
+        Icons.person_outline_rounded,
+      ),
+    );
+    expect(
+      nameInput.decoration.focusedBorder,
+      isA<OutlineInputBorder>().having(
+        (border) => border.borderSide.width,
+        'focused border width',
+        2,
+      ),
+    );
+
     final nameField = find.byType(TextFormField).first;
     await tester.enterText(nameField, '');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
-    expect(find.text('Enter your full name.'), findsOneWidget);
+    expect(find.text('Enter your first and last name.'), findsOneWidget);
 
     await tester.enterText(nameField, 'Taylor Kamanga');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'taylor@example.org',
+    );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(find.text('Taylor Kamanga').last, findsOneWidget);
-    expect(
-      find.text('Your personal details have been saved on this device.'),
-      findsOneWidget,
-    );
+    expect(find.text('taylor@example.org').last, findsOneWidget);
+    expect(find.text('Your profile has been updated.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
