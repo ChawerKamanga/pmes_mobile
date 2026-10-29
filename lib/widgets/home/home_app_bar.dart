@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 
@@ -32,7 +33,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             Icons.notifications_none_outlined,
             color: AppColors.card,
           ),
-          onPressed: () {},
+          onPressed: () => context.pushNamed('notifications'),
         ),
       ],
     );

@@ -15,6 +15,8 @@ class ApiConstants {
 
   static const String userProfile = '$baseUrl/me/profile';
 
+  static const String notifications = '$baseUrl/me/notifications';
+
   static String projectGps(String projectId) =>
       '$baseUrl/projects/$projectId/gps';
 
