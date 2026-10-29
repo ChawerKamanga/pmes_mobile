@@ -24,6 +24,10 @@ class ProfilePage extends StatefulWidget {
     this.lastLogin,
     this.onAppearance,
     this.onProfileUpdated,
+    this.onProfileLoaded,
+    this.onProfileLoadError,
+    this.initialProfile,
+    this.initialProfileError,
     this.profileService = const UserProfileService(),
     super.key,
   });
@@ -36,6 +40,10 @@ class ProfilePage extends StatefulWidget {
   final DateTime? lastLogin;
   final VoidCallback? onAppearance;
   final Future<void> Function(ProfileUser)? onProfileUpdated;
+  final ValueChanged<ProfileUser>? onProfileLoaded;
+  final ValueChanged<String>? onProfileLoadError;
+  final ProfileUser? initialProfile;
+  final String? initialProfileError;
   final UserProfileService profileService;
 
   @override
@@ -61,8 +69,12 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _profile = widget.initialProfile;
+    _profileError = widget.initialProfileError;
     _loadProfilePhoto();
-    _loadProfile();
+    if (_profile == null && _profileError == null) {
+      _loadProfile();
+    }
   }
 
   @override
@@ -70,7 +82,22 @@ class _ProfilePageState extends State<ProfilePage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.token != widget.token ||
         oldWidget.profileService != widget.profileService) {
-      _loadProfile();
+      if (widget.initialProfile != null) {
+        setState(() {
+          _profile = widget.initialProfile;
+          _profileError = widget.initialProfileError;
+          _isLoadingProfile = false;
+        });
+      } else {
+        _loadProfile();
+      }
+    } else if (oldWidget.initialProfile != widget.initialProfile ||
+        oldWidget.initialProfileError != widget.initialProfileError) {
+      setState(() {
+        _profile = widget.initialProfile;
+        _profileError = widget.initialProfileError;
+        _isLoadingProfile = false;
+      });
     }
   }
 
@@ -98,14 +125,17 @@ class _ProfilePageState extends State<ProfilePage> {
         _profile = response.user;
         _isLoadingProfile = false;
       });
+      widget.onProfileLoaded?.call(response.user);
     } catch (error) {
       if (!mounted || requestId != _profileRequestId) return;
+      final message = error is ApiException
+          ? error.message
+          : 'Something went wrong while loading your profile.';
       setState(() {
-        _profileError = error is ApiException
-            ? error.message
-            : 'Something went wrong while loading your profile.';
+        _profileError = message;
         _isLoadingProfile = false;
       });
+      widget.onProfileLoadError?.call(message);
     }
   }
 

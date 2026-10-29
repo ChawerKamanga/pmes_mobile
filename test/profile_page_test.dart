@@ -4,12 +4,60 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pmes_mobile/core/models/user_profile.dart';
 import 'package:pmes_mobile/core/theme/app_colors.dart';
 import 'package:pmes_mobile/pages/profile_page.dart';
 import 'package:pmes_mobile/core/services/user_profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets(
+    'uses the prefetched profile without loading or another request',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      var requestCount = 0;
+      final service = UserProfileService(
+        client: MockClient((request) async {
+          requestCount++;
+          return http.Response('{}', 500);
+        }),
+      );
+      const profile = ProfileUser(
+        id: '42',
+        firstName: 'Prefetched',
+        lastName: 'Officer',
+        fullName: 'Prefetched Officer',
+        email: 'prefetched@example.org',
+        roles: [],
+        accountStatus: 'active',
+        lastLogin: null,
+        department: null,
+        additionalDepartments: null,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfilePage(
+              userName: 'Cached Name',
+              userEmail: 'cached@example.org',
+              overview: null,
+              onLogout: _ignoreLogout,
+              initialProfile: profile,
+              profileService: service,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Prefetched Officer'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(requestCount, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('loads profile and organization details from the API', (
     tester,
   ) async {

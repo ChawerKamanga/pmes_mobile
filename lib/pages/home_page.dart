@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../core/models/dashboard_overview.dart';
+import '../core/models/user_profile.dart';
 import '../core/services/api_exception.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/dashboard_service.dart';
 import '../core/services/session_provider.dart';
+import '../core/services/user_profile_service.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_page.dart';
 import 'appearance_settings_page.dart';
@@ -30,11 +32,15 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   static const _authService = AuthService();
   static const _dashboardService = DashboardService();
+  static const _profileService = UserProfileService();
   bool _isLoggingOut = false;
   bool _isAppearanceOpen = false;
   int _selectedTab = 0;
 
   DashboardOverviewData? _overview;
+  ProfileUser? _profile;
+  bool _isProfileLoading = false;
+  String? _profileError;
   bool _isInitialLoading = true;
   String? _initialErrorMessage;
 
@@ -60,8 +66,10 @@ class _HomePageState extends State<HomePage> {
       _isInitialLoading = true;
       _initialErrorMessage = null;
     });
+    final profileLoad = _loadInitialProfile();
     try {
       final overview = await _loadOverview();
+      await profileLoad;
       if (!mounted) return;
       setState(() {
         _overview = overview;
@@ -75,6 +83,34 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _initialErrorMessage = message;
         _isInitialLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadInitialProfile() async {
+    if (_profile != null) return;
+    setState(() {
+      _isProfileLoading = true;
+      _profileError = null;
+    });
+    try {
+      final token = context.read<SessionProvider>().token;
+      if (token == null) {
+        throw const ApiException('You are not signed in.');
+      }
+      final response = await _profileService.getProfile(token: token);
+      if (!mounted) return;
+      setState(() {
+        _profile = response.user;
+        _isProfileLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _profileError = error is ApiException
+            ? error.message
+            : 'Something went wrong while loading your profile.';
+        _isProfileLoading = false;
       });
     }
   }
@@ -224,6 +260,9 @@ class _HomePageState extends State<HomePage> {
       if (_isAppearanceOpen) {
         return const AppearanceSettingsPage();
       }
+      if (_isProfileLoading) {
+        return const _HomePageLoadingShimmer();
+      }
       final session = context.watch<SessionProvider>();
       return ProfilePage(
         token: session.token,
@@ -231,12 +270,29 @@ class _HomePageState extends State<HomePage> {
         userEmail: session.userEmail,
         lastLogin: session.lastLogin,
         overview: _overview,
+        initialProfile: _profile,
+        initialProfileError: _profileError,
         onLogout: _confirmLogout,
         onAppearance: () => setState(() => _isAppearanceOpen = true),
-        onProfileUpdated: (profile) => session.updateUserProfile(
-          profile.displayName ?? session.userName ?? '',
-          profile.email ?? session.userEmail ?? '',
-        ),
+        onProfileLoaded: (profile) {
+          setState(() {
+            _profile = profile;
+            _profileError = null;
+          });
+        },
+        onProfileLoadError: (message) {
+          setState(() => _profileError = message);
+        },
+        onProfileUpdated: (profile) async {
+          setState(() {
+            _profile = profile;
+            _profileError = null;
+          });
+          await session.updateUserProfile(
+            profile.displayName ?? session.userName ?? '',
+            profile.email ?? session.userEmail ?? '',
+          );
+        },
       );
     }
 
